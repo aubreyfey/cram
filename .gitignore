@@ -44,3 +44,6 @@ yarn-error.*
 server/.env
 server/.vercel
 server/node_modules
+
+# web build output
+dist/
