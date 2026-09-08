@@ -69,9 +69,21 @@ export async function canUseDocuments() {
   return await isSubscribed();
 }
 
+// Subscribers - trial included - are unlimited as far as anyone can tell. This
+// ceiling exists only to stop someone taking a free week, running hundreds of
+// PDFs through it, and cancelling. A heavy student does 20-30 scans on a bad
+// day, so nobody real will ever meet it.
+export const FAIR_USE_DAILY_SCANS = 60;
+
 export async function checkQuota() {
-  if (await isSubscribed()) return { allowed: true, remaining: Infinity };
   const usage = await getUsage();
+
+  if (await isSubscribed()) {
+    const withinFairUse = usage.scans < FAIR_USE_DAILY_SCANS;
+    // remaining stays Infinity so the UI keeps showing PRO, not a countdown.
+    return { allowed: withinFairUse, remaining: Infinity, fairUse: !withinFairUse };
+  }
+
   const remaining = Math.max(0, FREE_DAILY_CARDS - usage.cards);
   return { allowed: remaining > 0, remaining };
 }

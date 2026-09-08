@@ -53,7 +53,9 @@ export default function App() {
       if (controller.signal.aborted) return;
 
       setDecks(await saveDeck(deck));
-      if (!(await isSubscribed())) await addUsage(deck.cards.length);
+      // Recorded for everyone, not just free users - subscribers don't meter
+      // cards, but their scans still cost us money and feed the fair-use check.
+      await addUsage(deck.cards.length);
       setQuota(await checkQuota());
 
       setActiveDeck(deck);
@@ -70,6 +72,15 @@ export default function App() {
     async (src) => {
       const q = await checkQuota();
       if (!q.allowed) {
+        // A subscriber who hits the fair-use ceiling is a paying customer, not
+        // a lead - show them a note, never the paywall they already bought.
+        if (q.fairUse) {
+          Alert.alert(
+            "That's a lot of scanning",
+            "You've hit today's limit. It resets at midnight - and if you genuinely need more, tell us.",
+          );
+          return;
+        }
         setPaywallReason('quota');
         setScreen('paywall');
         return;

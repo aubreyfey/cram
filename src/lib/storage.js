@@ -33,20 +33,28 @@ function today() {
   return new Date().toISOString().slice(0, 10);
 }
 
+// Two counters, because they answer different questions. Cards meter the free
+// tier (what the user perceives they're getting). Scans meter cost - we pay per
+// request, whether it comes back with 6 cards or 90.
 export async function getUsage() {
+  const empty = { date: today(), cards: 0, scans: 0 };
   try {
     const raw = await AsyncStorage.getItem(USAGE_KEY);
     const usage = raw ? JSON.parse(raw) : null;
-    if (!usage || usage.date !== today()) return { date: today(), cards: 0 };
-    return usage;
+    if (!usage || usage.date !== today()) return empty;
+    return { ...empty, ...usage };
   } catch {
-    return { date: today(), cards: 0 };
+    return empty;
   }
 }
 
 export async function addUsage(cards) {
   const usage = await getUsage();
-  const next = { date: today(), cards: usage.cards + cards };
+  const next = {
+    date: today(),
+    cards: usage.cards + cards,
+    scans: usage.scans + 1,
+  };
   await AsyncStorage.setItem(USAGE_KEY, JSON.stringify(next));
   return next;
 }

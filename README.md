@@ -91,12 +91,22 @@ figure out how to test.
 
 ## What's free and what isn't
 
-| | Free | Pro |
+| | Free | Pro (trial included) |
 |---|---|---|
 | Camera capture | ✓ | ✓ |
 | Photo library import | ✓ | ✓ |
 | **PDF / document import** | — | ✓ |
 | Cards per day | 10 | unlimited |
+
+The one-week trial is **full Pro** — unlimited cards and PDFs — because
+RevenueCat reports the `pro` entitlement as active for the whole trial period.
+A trial user is a Pro user until they cancel.
+
+Behind that sits `FAIR_USE_DAILY_SCANS` (60/day), which exists solely to stop
+someone taking a free week, running hundreds of PDFs through it, and
+cancelling. A heavy student does 20–30 scans on a bad day, so nobody real will
+meet it, and the UI never shows a countdown — subscribers just see `PRO`. If it
+does trip, they get a note, never the paywall they already bought.
 
 **PDF import is deliberately Pro-only.** Two reasons that happen to agree: a
 50-page PDF can produce a hundred cards in a single request, which makes a
