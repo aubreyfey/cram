@@ -1,24 +1,48 @@
 {
   "expo": {
-    "name": "APP",
-    "slug": "APP",
+    "name": "Cram",
+    "slug": "cram",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "scheme": "cram",
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#0B0B0F",
+    "splash": {
+      "backgroundColor": "#0B0B0F",
+      "resizeMode": "contain",
+      "image": "./assets/icon.png"
+    },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": false,
+      "bundleIdentifier": "com.cram.app",
+      "buildNumber": "1",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Cram uses your camera to turn lecture slides, textbook pages and handwritten notes into flashcards.",
+        "NSPhotoLibraryUsageDescription": "Import a photo of your notes to turn it into flashcards.",
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
+      "package": "com.cram.app",
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#0B0B0F",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       }
     },
-    "web": {
-      "favicon": "./assets/favicon.png"
+    "plugins": [
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Cram uses your camera to turn your notes into flashcards."
+        }
+      ]
+    ],
+    "extra": {
+      "apiBaseUrl": "https://cram-api.vercel.app",
+      "appKey": "change-me"
     }
   }
 }

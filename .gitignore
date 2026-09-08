@@ -39,3 +39,8 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# server secrets
+server/.env
+server/.vercel
+server/node_modules
