@@ -12,7 +12,7 @@ import * as Haptics from 'expo-haptics';
 import PrimaryButton from '../components/PrimaryButton';
 import { colors, motion, radius, space, type } from '../theme';
 
-export default function CameraScreen({ onCapture, onOpenLibrary, quota }) {
+export default function CameraScreen({ onCapture, onOpenLibrary, onOpenSource, quota }) {
   const [permission, requestPermission] = useCameraPermissions();
   const [busy, setBusy] = useState(false);
   const cameraRef = useRef(null);
@@ -40,7 +40,7 @@ export default function CameraScreen({ onCapture, onOpenLibrary, quota }) {
         quality: 0.8,
         skipProcessing: true,
       });
-      onCapture(photo.uri);
+      onCapture({ uri: photo.uri, kind: 'image' });
     } catch {
       // A failed frame is not worth an alert - the user just taps again.
     } finally {
@@ -67,6 +67,14 @@ export default function CameraScreen({ onCapture, onOpenLibrary, quota }) {
           label="Enable camera"
           onPress={requestPermission}
           style={{ marginTop: space(8) }}
+        />
+        {/* Without this, denying the permission leaves you on a dead-end
+            screen with no way back to decks you've already made. */}
+        <PrimaryButton
+          label="See my decks"
+          variant="ghost"
+          onPress={onOpenLibrary}
+          style={{ marginTop: space(3), alignSelf: 'stretch' }}
         />
       </View>
     );
@@ -102,7 +110,7 @@ export default function CameraScreen({ onCapture, onOpenLibrary, quota }) {
       </View>
 
       <Text style={[styles.caption, { bottom: insets.bottom + space(30) }]}>
-        Slides, textbook, or your own handwriting
+        Slides, textbook, handwriting, or a PDF
       </Text>
 
       <View style={[styles.bottomBar, { paddingBottom: insets.bottom + space(6) }]}>
@@ -116,8 +124,9 @@ export default function CameraScreen({ onCapture, onOpenLibrary, quota }) {
           </Pressable>
         </Animated.View>
 
-        {/* Empty slot balances the row so the shutter sits dead centre. */}
-        <View style={styles.sideSlot} />
+        <Pressable onPress={onOpenSource} style={styles.sideSlot} hitSlop={16}>
+          <Text style={[styles.libraryText, styles.importText]}>Import</Text>
+        </Pressable>
       </View>
     </View>
   );
@@ -199,6 +208,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: space(8),
   },
   sideSlot: { width: 64 },
+  importText: { textAlign: 'right', color: colors.accent },
   libraryText: { ...type.body, fontWeight: '700', color: colors.text },
   shutterOuter: {
     width: 78,

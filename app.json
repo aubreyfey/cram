@@ -19,7 +19,7 @@
       "buildNumber": "1",
       "infoPlist": {
         "NSCameraUsageDescription": "Cram uses your camera to turn lecture slides, textbook pages and handwritten notes into flashcards.",
-        "NSPhotoLibraryUsageDescription": "Import a photo of your notes to turn it into flashcards.",
+        "NSPhotoLibraryUsageDescription": "Import a screenshot or photo of your notes to turn it into flashcards.",
         "ITSAppUsesNonExemptEncryption": false
       }
     },
@@ -38,7 +38,14 @@
         {
           "cameraPermission": "Cram uses your camera to turn your notes into flashcards."
         }
-      ]
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Import a screenshot or photo of your notes to turn it into flashcards."
+        }
+      ],
+      "expo-document-picker"
     ],
     "extra": {
       "apiBaseUrl": "https://cram-api.vercel.app",

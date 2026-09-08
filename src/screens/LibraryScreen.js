@@ -2,10 +2,19 @@ import React from 'react';
 import { Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { FadeInDown } from 'react-native-reanimated';
+import PrimaryButton from '../components/PrimaryButton';
 import { deckProgress } from '../lib/srs';
 import { colors, radius, space, type } from '../theme';
 
-export default function LibraryScreen({ decks, onOpen, onClose, onDelete, isPro, onUpgrade }) {
+export default function LibraryScreen({
+  decks,
+  onOpen,
+  onClose,
+  onDelete,
+  isPro,
+  onUpgrade,
+  onLoadSample,
+}) {
   const insets = useSafeAreaInsets();
 
   const confirmDelete = (deck) => {
@@ -44,6 +53,14 @@ export default function LibraryScreen({ decks, onOpen, onClose, onDelete, isPro,
             <Text style={styles.emptyBody}>
               Point the camera at a slide or a page of notes to make your first deck.
             </Text>
+            {onLoadSample ? (
+              <PrimaryButton
+                label="Load a sample deck"
+                variant="ghost"
+                onPress={onLoadSample}
+                style={{ marginTop: space(8) }}
+              />
+            ) : null}
           </View>
         }
         renderItem={({ item, index }) => {

@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { forwardRef, useEffect, useImperativeHandle } from 'react';
 import { StyleSheet, Text, View, Dimensions } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
@@ -12,10 +12,11 @@ import Animated, {
 import * as Haptics from 'expo-haptics';
 import { colors, motion, radius, shadow, space, type } from '../theme';
 
-const { width: SCREEN_W } = Dimensions.get('window');
+const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
 const SWIPE_THRESHOLD = SCREEN_W * 0.28;
+const EXIT_MS = 220;
 
-export default function Flashcard({ card, onRate, depth = 0 }) {
+const Flashcard = forwardRef(function Flashcard({ card, onRate, depth = 0 }, ref) {
   const flip = useSharedValue(0);
   const x = useSharedValue(0);
   const y = useSharedValue(0);
@@ -30,13 +31,6 @@ export default function Flashcard({ card, onRate, depth = 0 }) {
 
   const isTop = depth === 0;
 
-  const tap = Gesture.Tap()
-    .enabled(isTop)
-    .onEnd(() => {
-      flip.value = withSpring(flip.value > 0.5 ? 0 : 1, motion.snap);
-      runOnJS(flipHaptic)();
-    });
-
   const buzz = (rating) => {
     Haptics.notificationAsync(
       rating === 'again'
@@ -46,6 +40,34 @@ export default function Flashcard({ card, onRate, depth = 0 }) {
   };
 
   const flipHaptic = () => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
+  // Each rating leaves in its own direction, so the gesture and the buttons
+  // produce the same motion and the deck never hard-cuts between cards.
+  const exitFor = (rating) => {
+    if (rating === 'again') return { dx: -SCREEN_W * 1.4, dy: 60 };
+    if (rating === 'hard') return { dx: 0, dy: -SCREEN_H * 0.9 };
+    return { dx: SCREEN_W * 1.4, dy: 60 };
+  };
+
+  const flyOut = (rating) => {
+    if (gone.value) return;
+    gone.value = 1;
+    buzz(rating);
+    const { dx, dy } = exitFor(rating);
+    y.value = withTiming(y.value + dy, { duration: EXIT_MS });
+    x.value = withTiming(dx, { duration: EXIT_MS }, (done) => {
+      if (done) runOnJS(onRate)(rating);
+    });
+  };
+
+  useImperativeHandle(ref, () => ({ flyOut }), [onRate]);
+
+  const tap = Gesture.Tap()
+    .enabled(isTop)
+    .onEnd(() => {
+      flip.value = withSpring(flip.value > 0.5 ? 0 : 1, motion.snap);
+      runOnJS(flipHaptic)();
+    });
 
   const pan = Gesture.Pan()
     .enabled(isTop)
@@ -57,17 +79,20 @@ export default function Flashcard({ card, onRate, depth = 0 }) {
     .onEnd((e) => {
       const past = Math.abs(e.translationX) > SWIPE_THRESHOLD;
       if (past) {
-        const dir = e.translationX > 0 ? 1 : -1;
-        const rating = dir > 0 ? 'good' : 'again';
+        const rating = e.translationX > 0 ? 'good' : 'again';
         gone.value = 1;
         runOnJS(buzz)(rating);
-        y.value = withTiming(y.value + 60, { duration: 220 });
+        y.value = withTiming(y.value + 60, { duration: EXIT_MS });
         // Report the rating only once the card has actually left the screen.
         // Calling it immediately lets the parent advance the queue and unmount
         // this card mid-flight, which cuts the exit animation to a hard pop.
-        x.value = withTiming(dir * SCREEN_W * 1.4, { duration: 220 }, (done) => {
-          if (done) runOnJS(onRate)(rating);
-        });
+        x.value = withTiming(
+          (e.translationX > 0 ? 1 : -1) * SCREEN_W * 1.4,
+          { duration: EXIT_MS },
+          (done) => {
+            if (done) runOnJS(onRate)(rating);
+          },
+        );
       } else {
         x.value = withSpring(0, motion.snap);
         y.value = withSpring(0, motion.snap);
@@ -112,7 +137,10 @@ export default function Flashcard({ card, onRate, depth = 0 }) {
 
   return (
     <GestureDetector gesture={Gesture.Simultaneous(pan, tap)}>
-      <Animated.View style={[styles.wrap, containerStyle]} pointerEvents={isTop ? 'auto' : 'none'}>
+      <Animated.View
+        style={[styles.wrap, containerStyle]}
+        pointerEvents={isTop ? 'auto' : 'none'}
+      >
         <Animated.View style={[styles.face, styles.front, frontStyle]}>
           <Text style={styles.kicker}>QUESTION</Text>
           <Text style={styles.prompt}>{card.front}</Text>
@@ -134,7 +162,9 @@ export default function Flashcard({ card, onRate, depth = 0 }) {
       </Animated.View>
     </GestureDetector>
   );
-}
+});
+
+export default Flashcard;
 
 const styles = StyleSheet.create({
   wrap: {

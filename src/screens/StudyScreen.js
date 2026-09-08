@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { FadeIn, useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
@@ -11,12 +11,21 @@ export default function StudyScreen({ deck, onClose, onUpdateDeck }) {
   const queue = useMemo(() => dueCards(deck.cards), [deck.id]);
   const [index, setIndex] = useState(0);
   const [ratings, setRatings] = useState({});
+  const topCardRef = useRef(null);
 
   const progress = useSharedValue(0);
   const progressStyle = useAnimatedStyle(() => ({ width: `${progress.value * 100}%` }));
 
   const insets = useSafeAreaInsets();
   const done = index >= queue.length;
+
+  // The buttons ask the top card to fly out; the card reports back through
+  // onRate once it has left. That way tapping and swiping look identical
+  // instead of the buttons hard-cutting to the next card.
+  const requestRate = (rating) => {
+    if (topCardRef.current) topCardRef.current.flyOut(rating);
+    else rate(rating);
+  };
 
   const rate = (rating) => {
     const card = queue[index];
@@ -83,6 +92,7 @@ export default function StudyScreen({ deck, onClose, onUpdateDeck }) {
           .map((card, i) => (
             <Flashcard
               key={card.id}
+              ref={i === 0 ? topCardRef : null}
               card={card}
               depth={i}
               onRate={rate}
@@ -92,9 +102,9 @@ export default function StudyScreen({ deck, onClose, onUpdateDeck }) {
       </View>
 
       <View style={[styles.rateRow, { paddingBottom: insets.bottom + space(4) }]}>
-        <RateButton label="Again" color={colors.again} onPress={() => rate(RATING.AGAIN)} />
-        <RateButton label="Hard" color={colors.hard} onPress={() => rate(RATING.HARD)} />
-        <RateButton label="Got it" color={colors.good} onPress={() => rate(RATING.GOOD)} />
+        <RateButton label="Again" color={colors.again} onPress={() => requestRate(RATING.AGAIN)} />
+        <RateButton label="Hard" color={colors.hard} onPress={() => requestRate(RATING.HARD)} />
+        <RateButton label="Got it" color={colors.good} onPress={() => requestRate(RATING.GOOD)} />
       </View>
     </View>
   );

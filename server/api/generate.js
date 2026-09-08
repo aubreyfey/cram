@@ -5,10 +5,17 @@ import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod';
 const client = new Anthropic();
 
 const MODEL = process.env.CRAM_MODEL || 'claude-opus-5';
-const MAX_IMAGE_BYTES = 6 * 1024 * 1024;
+
+const ACCEPTED = {
+  'image/jpeg': { kind: 'image', maxBytes: 6 * 1024 * 1024 },
+  'image/png': { kind: 'image', maxBytes: 6 * 1024 * 1024 },
+  'image/webp': { kind: 'image', maxBytes: 6 * 1024 * 1024 },
+  'image/heic': { kind: 'image', maxBytes: 6 * 1024 * 1024 },
+  'application/pdf': { kind: 'document', maxBytes: 16 * 1024 * 1024 },
+};
 
 const DeckSchema = z.object({
-  title: z.string().describe('Short deck name, 2-5 words, from the content'),
+  title: z.string().describe('Short deck name, 2-5 words, drawn from the content'),
   subject: z
     .string()
     .describe('Academic subject, e.g. "Organic Chemistry". Empty string if unclear.'),
@@ -20,13 +27,14 @@ const DeckSchema = z.object({
         hint: z.string().describe('Optional nudge. Empty string if none.'),
       }),
     )
-    .describe('Between 6 and 20 cards'),
+    .describe('Flashcards covering the material'),
 });
 
-const SYSTEM = `You turn a photo of study material into flashcards.
+const SYSTEM = `You turn study material into flashcards.
 
-The photo is a lecture slide, textbook page, or handwritten student notes. It may
-be blurry, at an angle, or badly lit. Read what you can.
+The input is a lecture slide, textbook page, handwritten student notes, or a
+multi-page PDF of any of those. Photos may be blurry, at an angle, or badly lit.
+Read what you can.
 
 Rules:
 - Write cards that test understanding, not trivia. Prefer "why does X happen"
@@ -37,11 +45,16 @@ Rules:
 - The back is one or two sentences. No preamble, no "The answer is".
 - Use the wording and notation from the source. If they wrote "ATP synthase",
   do not switch to "the enzyme that makes ATP".
-- Skip page numbers, headers, the lecturer's name, and course admin.
-- 6 to 20 cards depending on how much is actually on the page. Do not pad.
+- Skip page numbers, headers, the lecturer's name, references and course admin.
+- For a multi-page document, cover the whole thing rather than exhausting page
+  one. Weight coverage toward what the material spends the most time on.
+- Do not pad. A thin page gets few cards; that is the correct outcome.
 
-If the photo has no study content at all (a face, a wall, a menu), return an
-empty cards array rather than inventing material.`;
+Length: a single page or image should yield 6 to 20 cards. A multi-page document
+should yield roughly 8 to 15 cards per substantive page, up to a maximum of 120.
+
+If there is no study content at all (a face, a wall, a menu, an invoice), return
+an empty cards array rather than inventing material.`;
 
 // In-memory rate limit. Serverless instances are ephemeral and not shared, so
 // this only catches the naive case. See README - real auth is required before
@@ -49,13 +62,11 @@ empty cards array rather than inventing material.`;
 const hits = new Map();
 function rateLimited(ip) {
   const now = Date.now();
-  const window = 60_000;
-  const max = 12;
-  const entry = hits.get(ip)?.filter((t) => now - t < window) ?? [];
+  const entry = hits.get(ip)?.filter((t) => now - t < 60_000) ?? [];
   entry.push(now);
   hits.set(ip, entry);
   if (hits.size > 5000) hits.clear();
-  return entry.length > max;
+  return entry.length > 12;
 }
 
 export default async function handler(req, res) {
@@ -72,21 +83,35 @@ export default async function handler(req, res) {
     return res.status(429).json({ error: 'rate_limited' });
   }
 
-  const { image } = req.body || {};
-  if (typeof image !== 'string' || !image.length) {
-    return res.status(400).json({ error: 'missing_image' });
+  const { data, mediaType } = req.body || {};
+  if (typeof data !== 'string' || !data.length) {
+    return res.status(400).json({ error: 'missing_data' });
   }
-  if (image.length * 0.75 > MAX_IMAGE_BYTES) {
-    return res.status(413).json({ error: 'image_too_large' });
+
+  const spec = ACCEPTED[mediaType];
+  if (!spec) {
+    return res.status(415).json({ error: 'unsupported_media_type' });
   }
+  if (data.length * 0.75 > spec.maxBytes) {
+    return res.status(413).json({ error: 'too_large' });
+  }
+
+  // Image and PDF take different content-block types; everything downstream
+  // is identical, which is why the schema and prompt are shared.
+  const source = { type: 'base64', media_type: mediaType, data };
+  const block =
+    spec.kind === 'document'
+      ? { type: 'document', source }
+      : { type: 'image', source };
 
   try {
     const response = await client.messages.parse({
       model: MODEL,
-      max_tokens: 16000,
+      // A long PDF can legitimately produce a hundred cards.
+      max_tokens: spec.kind === 'document' ? 32000 : 16000,
       system: SYSTEM,
       // Low effort: this is extraction, not reasoning, and the product promise
-      // is a sub-3-second turnaround. Raise to "medium" only if card quality
+      // is a fast turnaround. Raise to "medium" only if card quality
       // measurably drops - it costs latency.
       output_config: {
         effort: 'low',
@@ -96,11 +121,14 @@ export default async function handler(req, res) {
         {
           role: 'user',
           content: [
+            block,
             {
-              type: 'image',
-              source: { type: 'base64', media_type: 'image/jpeg', data: image },
+              type: 'text',
+              text:
+                spec.kind === 'document'
+                  ? 'Make flashcards from this document.'
+                  : 'Make flashcards from this page.',
             },
-            { type: 'text', text: 'Make flashcards from this page.' },
           ],
         },
       ],

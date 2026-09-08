@@ -8,10 +8,25 @@ import { colors, radius, space, type } from '../theme';
 
 const BENEFITS = [
   'Unlimited cards, every day',
+  'Turn whole PDFs into decks',
   'Every deck saved and scheduled',
-  'Quiz mode before exams',
   'Cancel any time',
 ];
+
+const HEADLINES = {
+  quota: {
+    title: "You're out of free cards",
+    sub: 'Free resets tomorrow. Or keep going now.',
+  },
+  documents: {
+    title: 'Whole PDFs, one tap',
+    sub: 'Drop in a lecture deck or a chapter and get every card at once.',
+  },
+  default: {
+    title: 'Study without limits',
+    sub: 'Turn any page into a deck, as many as you need.',
+  },
+};
 
 export default function PaywallScreen({ onClose, onPurchased, reason }) {
   const [selected, setSelected] = useState('cram_semester');
@@ -31,6 +46,7 @@ export default function PaywallScreen({ onClose, onPurchased, reason }) {
   };
 
   const plan = PLANS.find((p) => p.id === selected);
+  const copy = HEADLINES[reason] ?? HEADLINES.default;
 
   return (
     <View style={[styles.root, { paddingTop: insets.top + space(2) }]}>
@@ -39,14 +55,8 @@ export default function PaywallScreen({ onClose, onPurchased, reason }) {
       </Pressable>
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-        <Text style={styles.headline}>
-          {reason === 'quota' ? "You're out of free cards" : 'Study without limits'}
-        </Text>
-        <Text style={styles.sub}>
-          {reason === 'quota'
-            ? 'Free resets tomorrow. Or keep going now.'
-            : 'Turn any page into a deck, as many as you need.'}
-        </Text>
+        <Text style={styles.headline}>{copy.title}</Text>
+        <Text style={styles.sub}>{copy.sub}</Text>
 
         <View style={styles.benefits}>
           {BENEFITS.map((b, i) => (
@@ -95,7 +105,7 @@ export default function PaywallScreen({ onClose, onPurchased, reason }) {
 
       <View style={[styles.footer, { paddingBottom: insets.bottom + space(4) }]}>
         <PrimaryButton
-          label={busy ? 'One moment…' : plan?.trial ? 'Start 3 days free' : 'Continue'}
+          label={busy ? 'One moment…' : plan?.trial ? 'Start my free week' : 'Continue'}
           onPress={buy}
         />
         <View style={styles.legalRow}>

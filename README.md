@@ -1,6 +1,7 @@
 # Cram
 
-Point your phone at a lecture slide, a textbook page, or your own handwriting.
+Point your phone at a lecture slide, a textbook page, or your own handwriting - or
+import a PDF, a screenshot, or a photo you already have.
 Get flashcards in about three seconds.
 
 Expo / React Native, iOS-first. The whole product is one gesture: **shutter →
@@ -58,7 +59,7 @@ RevenueCat. The IDs must match `PLANS` exactly:
 
 | Product ID | Type | Price |
 |---|---|---|
-| `cram_weekly` | Auto-renewing weekly | $3.99, 3-day free trial |
+| `cram_weekly` | Auto-renewing weekly | $3.99, 1-week free trial |
 | `cram_semester` | Non-renewing, 4 months | $19.99 |
 | `cram_annual` | Auto-renewing yearly | $39.99 |
 
@@ -87,6 +88,22 @@ and, before the first build, `eas build:configure`.
 Apple's review notes should say the app requires the camera and give them a
 photo of a textbook page to point it at — reviewers reject scan apps they can't
 figure out how to test.
+
+## What's free and what isn't
+
+| | Free | Pro |
+|---|---|---|
+| Camera capture | ✓ | ✓ |
+| Photo library import | ✓ | ✓ |
+| **PDF / document import** | — | ✓ |
+| Cards per day | 10 | unlimited |
+
+**PDF import is deliberately Pro-only.** Two reasons that happen to agree: a
+50-page PDF can produce a hundred cards in a single request, which makes a
+10-card daily limit meaningless; and it is by far the most expensive call we
+send. Gating it also gives the paywall something concrete to sell rather than
+just "more of the same". The check lives in `canUseDocuments()` in
+`src/lib/entitlements.js` — one function if you want to change the policy.
 
 ## Design rules
 

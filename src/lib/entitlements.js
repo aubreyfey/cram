@@ -10,8 +10,9 @@ export const PLANS = [
     label: 'Weekly',
     price: '$3.99',
     period: 'per week',
-    note: '3 days free, then $3.99/week',
+    note: '1 week free, then $3.99/week',
     trial: true,
+    trialDays: 7,
   },
   {
     id: 'cram_semester',
@@ -59,6 +60,13 @@ export async function purchase(planId) {
 
 export async function restore() {
   throw new Error('Billing is not wired up yet. See src/lib/entitlements.js.');
+}
+
+// Documents are Pro-only, for two reasons that happen to agree: a 50-page PDF
+// can produce a hundred cards in one shot, which makes a 10-card daily limit
+// meaningless, and it is by far the most expensive request we can send.
+export async function canUseDocuments() {
+  return await isSubscribed();
 }
 
 export async function checkQuota() {

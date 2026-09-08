@@ -14,9 +14,21 @@ import { colors, radius, space, type } from '../theme';
 
 // The request usually lands in 2-4s. Silence for that long reads as a hang, so
 // we narrate it. The steps are honest about what is happening, in order.
-const STEPS = ['Reading the page', 'Finding the concepts', 'Writing your cards'];
+const IMAGE_STEPS = ['Reading the page', 'Finding the concepts', 'Writing your cards'];
 
-export default function GeneratingScreen({ photoUri, error, onRetry, onCancel }) {
+// A multi-page PDF genuinely takes longer, so it gets its own narration and a
+// slower cadence - steps that race ahead of the work read as fake.
+const PDF_STEPS = [
+  'Opening the document',
+  'Reading every page',
+  'Picking out what matters',
+  'Writing your cards',
+];
+
+export default function GeneratingScreen({ source, error, onRetry, onCancel }) {
+  const isPdf = source?.kind === 'pdf';
+  const STEPS = isPdf ? PDF_STEPS : IMAGE_STEPS;
+  const photoUri = isPdf ? null : source?.uri;
   const [step, setStep] = useState(0);
   const [frameH, setFrameH] = useState(0);
   const insets = useSafeAreaInsets();
@@ -42,9 +54,12 @@ export default function GeneratingScreen({ photoUri, error, onRetry, onCancel })
 
   useEffect(() => {
     if (error) return;
-    const t = setInterval(() => setStep((s) => Math.min(s + 1, STEPS.length - 1)), 1100);
+    const t = setInterval(
+      () => setStep((s) => Math.min(s + 1, STEPS.length - 1)),
+      isPdf ? 2600 : 1100,
+    );
     return () => clearInterval(t);
-  }, [error]);
+  }, [error, isPdf, STEPS.length]);
 
   // translateY rather than an animated `top`: percentage layout props run on the
   // JS thread and stutter exactly when the device is busy encoding the photo.
@@ -62,6 +77,16 @@ export default function GeneratingScreen({ photoUri, error, onRetry, onCancel })
         onLayout={(e) => setFrameH(e.nativeEvent.layout.height)}
       >
         {photoUri ? <Image source={{ uri: photoUri }} style={styles.photo} /> : null}
+        {isPdf ? (
+          // A PDF has no thumbnail to show, so stand in with its filename -
+          // it confirms we picked up the right document.
+          <View style={styles.docStand}>
+            <Text style={styles.docGlyph}>▤</Text>
+            <Text style={styles.docName} numberOfLines={2}>
+              {source?.name || 'Document'}
+            </Text>
+          </View>
+        ) : null}
         <View style={styles.veil} />
         {!error ? <Animated.View style={[styles.scanline, scanStyle]} /> : null}
       </Animated.View>
@@ -109,6 +134,15 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
   },
   photo: { ...StyleSheet.absoluteFillObject, resizeMode: 'cover' },
+  docStand: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: space(4),
+    paddingHorizontal: space(8),
+  },
+  docGlyph: { fontSize: 56, color: colors.accent },
+  docName: { ...type.body, color: colors.textDim, textAlign: 'center' },
   veil: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(11,11,15,0.55)' },
   scanline: {
     position: 'absolute',
