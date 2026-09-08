@@ -48,7 +48,7 @@
       "expo-document-picker"
     ],
     "extra": {
-      "apiBaseUrl": "https://cram-api.vercel.app",
+      "apiBaseUrl": "http://localhost:3000",
       "appKey": "change-me"
     }
   }

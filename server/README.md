@@ -24,16 +24,32 @@ Set these in the Vercel dashboard (Settings -> Environment Variables):
 
 Then put the deployed URL into `app.json` -> `extra.apiBaseUrl`.
 
-## Local
+## Local (no Vercel account needed)
 
-```bash
-cp .env.example .env    # fill in the key
-npx vercel dev
+The fastest way to get a working scan. All you need is an Anthropic key.
+
+```powershell
+cd server
+npm install
+$env:ANTHROPIC_API_KEY = "sk-ant-..."
+node local.js
 ```
 
-Point the app at it by setting `extra.apiBaseUrl` to your machine's LAN IP
-(`http://192.168.x.x:3000`) — `localhost` resolves to the phone itself, not
-your laptop.
+That serves the same handler on `http://localhost:3000`, with CORS open so the
+browser preview on `:8081` can reach it.
+
+Then set `extra.apiBaseUrl` in `app.json`:
+
+| Testing on | Set it to |
+|---|---|
+| Browser preview | `http://localhost:3000` |
+| Your phone | `http://<your-laptop-lan-ip>:3000` |
+
+On a phone, `localhost` means the phone itself — it must be the laptop's LAN
+address, and both devices must be on the same wifi.
+
+`npx vercel dev` also works if you'd rather use the Vercel CLI, but it needs an
+account and adds nothing for local testing.
 
 ## What it costs to run
 

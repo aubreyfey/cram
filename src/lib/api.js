@@ -61,7 +61,24 @@ export async function generateDeck(source, { signal } = {}) {
     });
   } catch (e) {
     if (e.name === 'AbortError') throw e;
-    throw new ApiError('No connection. Check your wifi and try again.', 'network');
+    // A fetch rejection means we never reached the server at all. Blaming the
+    // user's wifi is wrong and unhelpful when the real cause is usually that
+    // the API isn't running or apiBaseUrl points somewhere that doesn't exist.
+    throw new ApiError(
+      __DEV__
+        ? `Can't reach the Cram API at ${BASE_URL}. Is the server running?`
+        : "Can't reach Cram right now. Check your connection and try again.",
+      'network',
+    );
+  }
+
+  if (res.status === 404) {
+    throw new ApiError(
+      __DEV__
+        ? `No /api/generate at ${BASE_URL} - check extra.apiBaseUrl in app.json.`
+        : "Can't reach Cram right now. Try again in a moment.",
+      'not_found',
+    );
   }
 
   if (res.status === 429) {
