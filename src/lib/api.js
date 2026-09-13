@@ -67,7 +67,7 @@ export async function generateDeck(source, { signal } = {}) {
     throw new ApiError(
       __DEV__
         ? `Can't reach the Cram API at ${BASE_URL}. Is the server running?`
-        : "Can't reach Cram right now. Check your connection and try again.",
+        : "Couldn't reach Cram's servers. Try again in a moment.",
       'network',
     );
   }

@@ -1,3 +1,4 @@
+import Constants from 'expo-constants';
 import { getUsage } from './storage';
 
 // Free users get a real taste, then hit a wall. 10 cards is roughly one
@@ -46,7 +47,15 @@ export const PLANS = [
 // swap is contained to these three functions.
 // ---------------------------------------------------------------------------
 
-let subscribed = false;
+// Until RevenueCat is wired in there is no way to *become* subscribed, which
+// turns every Pro gate into a dead end. `extra.unlockAll` in app.json treats
+// everyone as Pro so the whole app can be exercised in test builds.
+//
+// TODO(Taylor): set "unlockAll": false in app.json before the App Store build.
+// Shipping with it true gives away the product for free.
+const UNLOCK_ALL = Constants.expoConfig?.extra?.unlockAll === true;
+
+let subscribed = UNLOCK_ALL;
 
 export async function isSubscribed() {
   return subscribed;

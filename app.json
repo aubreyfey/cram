@@ -49,7 +49,8 @@
     ],
     "extra": {
       "apiBaseUrl": "http://localhost:3000",
-      "appKey": "change-me"
+      "appKey": "change-me",
+      "unlockAll": true
     }
   }
 }

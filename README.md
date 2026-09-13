@@ -63,14 +63,18 @@ RevenueCat. The IDs must match `PLANS` exactly:
 | `cram_semester` | Non-renewing, 4 months | $19.99 |
 | `cram_annual` | Auto-renewing yearly | $39.99 |
 
-**2. Icon and splash** are still the Expo placeholders in `assets/`.
+**2. Turn off the test unlock.** `app.json` → `extra.unlockAll` is `true` so every
+Pro feature can be exercised before billing exists. Set it to `false` before the
+App Store build or the product ships free.
 
-**3. Terms and privacy URLs** in `PaywallScreen.js` point at `cram.app`, which
+**3. Icon and splash** are still the Expo placeholders in `assets/`.
+
+**4. Terms and privacy URLs** in `PaywallScreen.js` point at `cram.app`, which
 does not exist yet. Apple rejects subscription apps without working links —
 this is the single most common rejection reason for this app category, so do
 not leave it to the submission.
 
-**4. The app key is a placeholder.** `app.json` → `extra.appKey` and the
+**5. The app key is a placeholder.** `app.json` → `extra.appKey` and the
 server's `CRAM_APP_KEY` both say `change-me`. They have to match.
 
 ## Submitting
