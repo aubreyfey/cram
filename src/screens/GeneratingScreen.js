@@ -9,6 +9,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Mascot from '../components/Mascot';
 import PrimaryButton from '../components/PrimaryButton';
 import { colors, radius, space, type } from '../theme';
 
@@ -106,6 +107,7 @@ export default function GeneratingScreen({ source, error, onRetry, onCancel }) {
         </View>
       ) : (
         <View style={styles.status}>
+          <Mascot mood="thinking" size={64} style={{ marginBottom: space(5) }} />
           <Text style={styles.step}>{STEPS[step]}</Text>
           <View style={styles.dots}>
             {STEPS.map((_, i) => (

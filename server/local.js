@@ -20,10 +20,21 @@ import handler from './api/generate.js';
 const PORT = Number(process.env.PORT) || 3000;
 const MAX_BODY = 40 * 1024 * 1024;
 
-if (!process.env.ANTHROPIC_API_KEY) {
+// Load server/.env if it exists, so the key can live in a file (gitignored)
+// instead of having to be typed into a terminal every time.
+try {
+  process.loadEnvFile(new URL('./.env', import.meta.url));
+} catch {
+  // No .env - fall through to the environment variable check below.
+}
+
+const key = process.env.ANTHROPIC_API_KEY || '';
+if (!key || key.includes('paste') || key.endsWith('...')) {
   console.error(
-    '\nANTHROPIC_API_KEY is not set. Get a key at https://console.anthropic.com\n' +
-      'then run:  $env:ANTHROPIC_API_KEY = "sk-ant-..."   (PowerShell)\n',
+    '\nNo Anthropic API key found.\n' +
+      '  1. Get one at https://console.anthropic.com/settings/keys\n' +
+      '  2. Open server/.env and paste it after the = sign\n' +
+      '  3. Save, then start this again\n',
   );
   process.exit(1);
 }

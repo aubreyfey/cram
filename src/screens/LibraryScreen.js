@@ -2,6 +2,7 @@ import React from 'react';
 import { Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { FadeInDown } from 'react-native-reanimated';
+import Mascot from '../components/Mascot';
 import PrimaryButton from '../components/PrimaryButton';
 import { deckProgress } from '../lib/srs';
 import { colors, radius, space, type } from '../theme';
@@ -49,6 +50,7 @@ export default function LibraryScreen({
         contentContainerStyle={{ padding: space(6), paddingBottom: insets.bottom + space(10) }}
         ListEmptyComponent={
           <View style={styles.empty}>
+            <Mascot mood="idle" size={80} style={{ marginBottom: space(5) }} />
             <Text style={styles.emptyTitle}>Nothing here yet</Text>
             <Text style={styles.emptyBody}>
               Point the camera at a slide or a page of notes to make your first deck.

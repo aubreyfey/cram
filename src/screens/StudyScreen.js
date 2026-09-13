@@ -1,7 +1,15 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Animated, { FadeIn, useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
+import Animated, {
+  FadeIn,
+  ZoomIn,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+} from 'react-native-reanimated';
+import Confetti from '../components/Confetti';
+import Mascot from '../components/Mascot';
 import Flashcard from '../components/Flashcard';
 import PrimaryButton from '../components/PrimaryButton';
 import { RATING, dueCards, schedule } from '../lib/srs';
@@ -45,18 +53,27 @@ export default function StudyScreen({ deck, onClose, onUpdateDeck }) {
 
   if (done) {
     const got = (ratings[RATING.GOOD] || 0) + (ratings[RATING.HARD] || 0);
+    const cleanSweep = !ratings[RATING.AGAIN];
     return (
       <View style={[styles.root, styles.center, { paddingTop: insets.top }]}>
+        {/* Confetti only for a clean sweep. If it fires every time it stops
+            meaning anything, and the redo-tomorrow message deserves calm. */}
+        {cleanSweep ? <Confetti /> : null}
+
         <Animated.View entering={FadeIn.duration(400)} style={styles.summary}>
-          <Text style={styles.summaryScore}>
-            {got}
+          <Animated.View entering={ZoomIn.springify().damping(14).delay(120)}>
+            <Mascot mood="happy" size={96} />
+          </Animated.View>
+
+          <Text style={[styles.summaryScore, { marginTop: space(6) }]}>
+            <CountUp to={got} />
             <Text style={styles.summaryTotal}>/{queue.length}</Text>
           </Text>
           <Text style={styles.summaryLabel}>cards you knew</Text>
           <Text style={styles.summaryBody}>
-            {ratings[RATING.AGAIN]
-              ? `${ratings[RATING.AGAIN]} coming back tomorrow.`
-              : 'Clean sweep. Nothing to redo.'}
+            {cleanSweep
+              ? 'Clean sweep. Nothing to redo.'
+              : `${ratings[RATING.AGAIN]} coming back tomorrow.`}
           </Text>
           <PrimaryButton label="Done" onPress={onClose} style={{ marginTop: space(10) }} />
         </Animated.View>
@@ -172,3 +189,24 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 });
+
+// Ticks the score up from 0 over ~600ms. Plain state rather than a worklet
+// because Text can't take a shared value directly, and 20 renders is nothing.
+function CountUp({ to }) {
+  const [n, setN] = useState(0);
+  useEffect(() => {
+    if (to <= 0) return;
+    const start = Date.now();
+    const dur = 600;
+    let raf;
+    const tick = () => {
+      const p = Math.min(1, (Date.now() - start) / dur);
+      const eased = 1 - Math.pow(1 - p, 3);
+      setN(Math.round(eased * to));
+      if (p < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [to]);
+  return <>{n}</>;
+}
