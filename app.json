@@ -50,7 +50,7 @@
     "extra": {
       "apiBaseUrl": "http://localhost:3000",
       "appKey": "change-me",
-      "unlockAll": true,
+      "unlockAll": false,
       "siteUrl": "https://cram.vercel.app"
     }
   }

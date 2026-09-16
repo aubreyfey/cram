@@ -114,3 +114,22 @@ export async function touchStreak() {
   await AsyncStorage.setItem(STREAK_KEY, JSON.stringify(next));
   return next;
 }
+
+// Admin code. Stored only after the server has confirmed it, and sent back on
+// every scan so the server can recognise us. It is the operator's own
+// device, so a plain AsyncStorage key is enough - the secret it unlocks is
+// still checked server-side on every request.
+const ADMIN_KEY = 'cram.admin.v1';
+
+export async function getAdminCode() {
+  try {
+    return (await AsyncStorage.getItem(ADMIN_KEY)) || null;
+  } catch {
+    return null;
+  }
+}
+
+export async function setAdminCode(code) {
+  if (code) await AsyncStorage.setItem(ADMIN_KEY, code);
+  else await AsyncStorage.removeItem(ADMIN_KEY);
+}

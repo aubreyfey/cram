@@ -1,5 +1,6 @@
 import Constants from 'expo-constants';
-import { getUsage } from './storage';
+import { getAdminCode, getUsage, setAdminCode } from './storage';
+import { verifyAdminCode } from './api';
 
 // Free users get a real taste, then hit a wall. 10 cards is roughly one
 // slide's worth - enough to see it work, not enough to study from.
@@ -47,18 +48,33 @@ export const PLANS = [
 // swap is contained to these three functions.
 // ---------------------------------------------------------------------------
 
-// Until RevenueCat is wired in there is no way to *become* subscribed, which
-// turns every Pro gate into a dead end. `extra.unlockAll` in app.json treats
-// everyone as Pro so the whole app can be exercised in test builds.
-//
-// TODO(Taylor): set "unlockAll": false in app.json before the App Store build.
-// Shipping with it true gives away the product for free.
+// `extra.unlockAll` in app.json treats everyone as Pro. It is off; admin mode
+// (below) is how the operator gets unlimited scans without unlocking the
+// product for every install. Only flip it on for a throwaway test build, and
+// never ship with it true - that gives the product away.
 const UNLOCK_ALL = Constants.expoConfig?.extra?.unlockAll === true;
 
 let subscribed = UNLOCK_ALL;
 
 export async function isSubscribed() {
-  return subscribed;
+  return subscribed || (await isAdmin());
+}
+
+// Admin: the operator's own devices. Unlimited, no fair-use ceiling, no
+// paywall. Turned on by entering a code that only the server knows (tap the
+// wordmark on the camera five times), so it cannot be found in the bundle.
+export async function isAdmin() {
+  return (await getAdminCode()) != null;
+}
+
+export async function enableAdmin(code) {
+  const trimmed = code.trim();
+  await verifyAdminCode(trimmed);
+  await setAdminCode(trimmed);
+}
+
+export async function disableAdmin() {
+  await setAdminCode(null);
 }
 
 export async function purchase(planId) {
@@ -86,6 +102,10 @@ export const FAIR_USE_DAILY_SCANS = 60;
 
 export async function checkQuota() {
   const usage = await getUsage();
+
+  if (await isAdmin()) {
+    return { allowed: true, remaining: Infinity, admin: true };
+  }
 
   if (await isSubscribed()) {
     const withinFairUse = usage.scans < FAIR_USE_DAILY_SCANS;

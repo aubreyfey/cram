@@ -19,11 +19,24 @@ export default function CameraScreen({
   quota,
   appendTo,
   onCancelAppend,
+  onAdminTap,
 }) {
   const [permission, requestPermission] = useCameraPermissions();
   const [busy, setBusy] = useState(false);
   const cameraRef = useRef(null);
   const insets = useSafeAreaInsets();
+
+  // Five taps on the wordmark inside two seconds opens the admin sheet. Not
+  // documented in the UI on purpose.
+  const taps = useRef([]);
+  const wordmarkTap = () => {
+    const now = Date.now();
+    taps.current = [...taps.current.filter((t) => now - t < 2000), now];
+    if (taps.current.length >= 5) {
+      taps.current = [];
+      onAdminTap?.();
+    }
+  };
 
   const shutter = useSharedValue(1);
   const flash = useSharedValue(0);
@@ -104,14 +117,18 @@ export default function CameraScreen({
       </View>
 
       <View style={[styles.topBar, { paddingTop: insets.top + space(2) }]}>
-        <Text style={styles.wordmark}>CRAM</Text>
+        <Pressable onPress={wordmarkTap} hitSlop={12}>
+          <Text style={styles.wordmark}>CRAM</Text>
+        </Pressable>
         {quota.remaining !== Infinity ? (
           <View style={styles.quotaPill}>
             <Text style={styles.quotaText}>{quota.remaining} CARDS LEFT</Text>
           </View>
         ) : (
           <View style={[styles.quotaPill, styles.proPill]}>
-            <Text style={[styles.quotaText, { color: colors.accentInk }]}>PRO</Text>
+            <Text style={[styles.quotaText, { color: colors.accentInk }]}>
+              {quota.admin ? 'ADMIN' : 'PRO'}
+            </Text>
           </View>
         )}
       </View>

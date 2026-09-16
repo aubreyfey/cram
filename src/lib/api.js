@@ -1,6 +1,7 @@
 import Constants from 'expo-constants';
 import * as ImageManipulator from 'expo-image-manipulator';
 import { readBase64 } from './files';
+import { getAdminCode } from './storage';
 
 const BASE_URL =
   Constants.expoConfig?.extra?.apiBaseUrl || 'http://localhost:3000';
@@ -48,6 +49,7 @@ export async function generateDeck(source, { signal } = {}) {
       ? await preparePdf(source.uri, source.size)
       : await prepareImage(source.uri);
 
+  const admin = await getAdminCode();
   let res;
   try {
     res = await fetch(`${BASE_URL}/api/generate`, {
@@ -55,6 +57,7 @@ export async function generateDeck(source, { signal } = {}) {
       headers: {
         'Content-Type': 'application/json',
         'x-cram-key': Constants.expoConfig?.extra?.appKey ?? '',
+        ...(admin ? { 'x-cram-admin': admin } : {}),
       },
       body: JSON.stringify({ data, mediaType }),
       signal,
@@ -114,4 +117,31 @@ export async function generateDeck(source, { signal } = {}) {
       hint: c.hint || null,
     })),
   };
+}
+
+// Asks the server whether a code is the admin code. Resolves on success and
+// throws a readable ApiError otherwise - the caller stores nothing until then.
+export async function verifyAdminCode(code) {
+  let res;
+  try {
+    res = await fetch(`${BASE_URL}/api/admin`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-cram-key': Constants.expoConfig?.extra?.appKey ?? '',
+      },
+      body: JSON.stringify({ code }),
+    });
+  } catch {
+    throw new ApiError("Can't reach the Cram API to check that code.", 'network');
+  }
+  if (res.status === 503) {
+    throw new ApiError('The server has no CRAM_ADMIN_KEY set.', 'not_configured');
+  }
+  if (res.status === 404) {
+    throw new ApiError('The server has no /api/admin - deploy the latest server.', 'not_found');
+  }
+  if (!res.ok) {
+    throw new ApiError("That's not it.", 'bad_code');
+  }
 }

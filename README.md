@@ -67,9 +67,21 @@ RevenueCat. The IDs must match `PLANS` exactly:
 | `cram_semester` | Non-renewing, 4 months | $19.99 |
 | `cram_annual` | Auto-renewing yearly | $39.99 |
 
-**2. Turn off the test unlock.** `app.json` → `extra.unlockAll` is `true` so every
-Pro feature can be exercised before billing exists. Set it to `false` before the
-App Store build or the product ships free.
+**2. Test with admin mode, not the global unlock.** `app.json` →
+`extra.unlockAll` is `false` and should stay that way — `true` gives every
+install Pro for free. To get unlimited scans on your own phone:
+
+1. Set `CRAM_ADMIN_KEY` on the server (any long random string; see
+   `server/README.md`).
+2. In the app, tap the **CRAM** wordmark on the camera screen five times.
+3. Type the key. The pill turns to `ADMIN`.
+
+Admin skips the free-tier meter, the PDF gate, the fair-use ceiling and the
+server's per-IP rate limit. Same five taps offers to turn it off, so you can
+check the paywall and free tier on the same phone. The key is verified by the
+server and never bundled into the app, so nobody can pull it out of the IPA.
+Everyone who isn't admin sees the free tier until they buy or start the trial —
+which still needs step 1.
 
 **3. Icon and splash** are still the Expo placeholders in `assets/`.
 

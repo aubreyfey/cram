@@ -1,6 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { z } from 'zod';
 import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod';
+import { isAdminCode } from './admin.js';
 
 const client = new Anthropic();
 
@@ -78,8 +79,11 @@ export default async function handler(req, res) {
     return res.status(401).json({ error: 'unauthorized' });
   }
 
+  // Admins (the people who run this thing) skip the per-IP limit - testing a
+  // build means firing off a dozen scans in a minute.
+  const admin = isAdminCode(req.headers['x-cram-admin']);
   const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || 'unknown';
-  if (rateLimited(ip)) {
+  if (!admin && rateLimited(ip)) {
     return res.status(429).json({ error: 'rate_limited' });
   }
 

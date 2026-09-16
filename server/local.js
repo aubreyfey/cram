@@ -15,7 +15,10 @@
 // This is for development. Deploy to Vercel for anything real - see README.
 
 import http from 'node:http';
-import handler from './api/generate.js';
+import generate from './api/generate.js';
+import admin from './api/admin.js';
+
+const ROUTES = { '/api/generate': generate, '/api/admin': admin };
 
 const PORT = Number(process.env.PORT) || 3000;
 const MAX_BODY = 40 * 1024 * 1024;
@@ -83,7 +86,7 @@ const server = http.createServer(async (req, res) => {
   // The browser preview runs on :8081 and this on :3000, so it is a
   // cross-origin request and needs CORS. Wide open is fine for localhost.
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, x-cram-key');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, x-cram-key, x-cram-admin');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
 
   if (req.method === 'OPTIONS') {
@@ -91,7 +94,8 @@ const server = http.createServer(async (req, res) => {
     return res.end();
   }
 
-  if (!req.url?.startsWith('/api/generate')) {
+  const handler = ROUTES[req.url?.split('?')[0]];
+  if (!handler) {
     res.statusCode = 404;
     return res.end('Not found. Try POST /api/generate');
   }
@@ -118,6 +122,10 @@ server.listen(PORT, () => {
   console.log(`\nCram API listening on http://localhost:${PORT}`);
   console.log(`Model: ${process.env.CRAM_MODEL || 'claude-opus-5'}`);
   if (!process.env.CRAM_APP_KEY) {
-    console.log('CRAM_APP_KEY unset - the shared-secret check is skipped locally.\n');
+    console.log('CRAM_APP_KEY unset - the shared-secret check is skipped locally.');
   }
+  if (!process.env.CRAM_ADMIN_KEY) {
+    console.log('CRAM_ADMIN_KEY unset - admin mode cannot be turned on from the app.');
+  }
+  console.log('');
 });

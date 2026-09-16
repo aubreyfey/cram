@@ -21,6 +21,11 @@ Set these in the Vercel dashboard (Settings -> Environment Variables):
 | `ANTHROPIC_API_KEY` | from console.anthropic.com |
 | `CRAM_APP_KEY` | any long random string; must match `extra.appKey` in `app.json` |
 | `CRAM_MODEL` | `claude-opus-5` (see cost note below) |
+| `CRAM_ADMIN_KEY` | any long random string; the code you type into the app to turn on admin mode |
+
+`CRAM_ADMIN_KEY` is checked by `POST /api/admin` and, as the `x-cram-admin`
+header, lets a request skip the per-IP rate limit. It never ships in the app.
+Leave it unset and admin mode simply cannot be turned on.
 
 Then put the deployed URL into `app.json` -> `extra.apiBaseUrl`.
 

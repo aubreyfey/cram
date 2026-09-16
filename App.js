@@ -5,6 +5,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import ErrorBoundary from './src/components/ErrorBoundary';
+import AdminSheet from './src/components/AdminSheet';
 import Screen from './src/components/Screen';
 import SourceSheet from './src/components/SourceSheet';
 import CameraScreen from './src/screens/CameraScreen';
@@ -24,7 +25,7 @@ import {
   saveDeck,
   touchStreak,
 } from './src/lib/storage';
-import { canUseDocuments, checkQuota, isSubscribed } from './src/lib/entitlements';
+import { canUseDocuments, checkQuota, disableAdmin, isSubscribed } from './src/lib/entitlements';
 import { makeSampleDeck } from './src/lib/sampleDeck';
 import { colors } from './src/theme';
 
@@ -38,6 +39,7 @@ export default function App() {
   const [pro, setPro] = useState(false);
   const [paywallReason, setPaywallReason] = useState(null);
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [adminOpen, setAdminOpen] = useState(false);
   const [streak, setStreak] = useState(0);
   // When set, the next scan's cards are appended to this deck instead of
   // making a new one. A lecture is thirty slides, not thirty decks.
@@ -174,6 +176,26 @@ export default function App() {
     setScreen('study');
   }, [decks]);
 
+  // The hidden wordmark gesture. Already admin -> offer to turn it off, so
+  // the paywall and free tier can be checked on the same phone.
+  const adminTap = useCallback(() => {
+    if (quota.admin) {
+      Alert.alert('Admin is on', 'Turn it off to see the app as a normal user?', [
+        { text: 'Keep', style: 'cancel' },
+        {
+          text: 'Turn off',
+          style: 'destructive',
+          onPress: async () => {
+            await disableAdmin();
+            refresh();
+          },
+        },
+      ]);
+      return;
+    }
+    setAdminOpen(true);
+  }, [quota.admin, refresh]);
+
   const addPages = useCallback((deck) => {
     setAppendTo(deck);
     setActiveDeck(null);
@@ -203,9 +225,10 @@ export default function App() {
             {screen === 'camera' && (
               <Screen preset="fade">
                 <CameraScreen
-                  quota={pro ? { remaining: Infinity } : quota}
+                  quota={pro ? { remaining: Infinity, admin: quota.admin } : quota}
                   appendTo={appendTo}
                   onCancelAppend={() => setAppendTo(null)}
+                  onAdminTap={adminTap}
                   onCapture={start}
                   onOpenSource={() => setSheetOpen(true)}
                   onOpenLibrary={() => setScreen('library')}
@@ -281,6 +304,15 @@ export default function App() {
               isPro={pro}
               onPick={handlePick}
               onClose={() => setSheetOpen(false)}
+            />
+
+            <AdminSheet
+              visible={adminOpen}
+              onClose={() => setAdminOpen(false)}
+              onEnabled={async () => {
+                setAdminOpen(false);
+                await refresh();
+              }}
             />
           </View>
         </ErrorBoundary>
