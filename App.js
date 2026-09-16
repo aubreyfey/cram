@@ -13,8 +13,10 @@ import GeneratingScreen from './src/screens/GeneratingScreen';
 import StudyScreen from './src/screens/StudyScreen';
 import LibraryScreen from './src/screens/LibraryScreen';
 import PaywallScreen from './src/screens/PaywallScreen';
+import ReviewScreen from './src/screens/ReviewScreen';
 
 import { generateDeck } from './src/lib/api';
+import { MAX_PAGES } from './src/lib/api';
 import { pickDocument, pickFromLibrary } from './src/lib/pickers';
 import {
   addUsage,
@@ -44,6 +46,9 @@ export default function App() {
   // When set, the next scan's cards are appended to this deck instead of
   // making a new one. A lecture is thirty slides, not thirty decks.
   const [appendTo, setAppendTo] = useState(null);
+  // Photos waiting on the review screen. Every capture and every library pick
+  // lands here first; a deck is made from all of them at once.
+  const [pages, setPages] = useState([]);
 
   const abortRef = useRef(null);
   const activeRef = useRef(null);
@@ -84,6 +89,7 @@ export default function App() {
         setQuota(await checkQuota());
 
         setAppendTo(null);
+        setPages([]);
         setActiveDeck(deck);
         setScreen('study');
       } catch (e) {
@@ -120,6 +126,13 @@ export default function App() {
     [run],
   );
 
+  // Photos queue up for review; a PDF goes straight through, since there is
+  // nothing to preview and it is never one of a set.
+  const addPages = useCallback((incoming) => {
+    setPages((prev) => [...prev, ...incoming].slice(0, MAX_PAGES));
+    setScreen('review');
+  }, []);
+
   const handlePick = useCallback(
     async (kind) => {
       setSheetOpen(false);
@@ -135,13 +148,20 @@ export default function App() {
         const picked =
           kind === 'library' ? await pickFromLibrary() : await pickDocument();
         // Backing out of the system picker is not an error - do nothing.
-        if (picked) start(picked);
+        if (!picked) return;
+        if (picked.kind === 'pdf') start(picked);
+        else addPages(picked.pages);
       } catch (e) {
         Alert.alert("Couldn't open that", e.message);
       }
     },
-    [start],
+    [start, addPages],
   );
+
+  const generateFromPages = useCallback(() => {
+    if (!pages.length) return;
+    start({ kind: 'images', pages, name: pages[0].name || null });
+  }, [pages, start]);
 
   const updateDeck = useCallback(async (deck, { rated } = {}) => {
     if (rated) setStreak((await touchStreak()).count);
@@ -196,22 +216,30 @@ export default function App() {
     setAdminOpen(true);
   }, [quota.admin, refresh]);
 
-  const addPages = useCallback((deck) => {
+  const appendToDeck = useCallback((deck) => {
     setAppendTo(deck);
     setActiveDeck(null);
     setScreen('camera');
   }, []);
 
+  // Backing out of a failed request keeps the pages: the fix is usually to
+  // start the server or wait, not to reshoot the lecture.
   const cancel = useCallback(() => {
     abortRef.current?.abort();
     setError(null);
     setSource(null);
+    setScreen(pages.length ? 'review' : 'camera');
+  }, [pages.length]);
+
+  const discardPages = useCallback(() => {
+    setPages([]);
     setScreen('camera');
   }, []);
 
   const backToCamera = useCallback(() => {
     setActiveDeck(null);
     setAppendTo(null);
+    setPages([]);
     setSource(null);
     setScreen('camera');
   }, []);
@@ -229,9 +257,29 @@ export default function App() {
                   appendTo={appendTo}
                   onCancelAppend={() => setAppendTo(null)}
                   onAdminTap={adminTap}
-                  onCapture={start}
+                  pageCount={pages.length}
+                  onOpenReview={() => setScreen('review')}
+                  onCapture={(photo) => addPages([photo])}
                   onOpenSource={() => setSheetOpen(true)}
                   onOpenLibrary={() => setScreen('library')}
+                />
+              </Screen>
+            )}
+
+            {screen === 'review' && (
+              <Screen preset="push">
+                <ReviewScreen
+                  pages={pages}
+                  appendTo={appendTo}
+                  onRemove={(i) => {
+                    const next = pages.filter((_, j) => j !== i);
+                    setPages(next);
+                    if (!next.length) setScreen('camera');
+                  }}
+                  onAddCamera={() => setScreen('camera')}
+                  onAddLibrary={() => handlePick('library')}
+                  onGenerate={generateFromPages}
+                  onCancel={discardPages}
                 />
               </Screen>
             )}
@@ -255,7 +303,7 @@ export default function App() {
                 <StudyScreen
                   deck={activeDeck}
                   onUpdateDeck={updateDeck}
-                  onAddPages={addPages}
+                  onAddPages={appendToDeck}
                   onClose={backToCamera}
                 />
               </Screen>
@@ -272,7 +320,7 @@ export default function App() {
                     setScreen('study');
                   }}
                   onReviewDue={reviewDue}
-                  onAddPages={addPages}
+                  onAddPages={appendToDeck}
                   onDelete={async (id) => setDecks(await deleteDeck(id))}
                   onLoadSample={async () => {
                     setDecks(await saveDeck(makeSampleDeck()));

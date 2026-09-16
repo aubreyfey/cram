@@ -1,6 +1,7 @@
 # Cram API
 
-One endpoint. Takes a base64 JPEG of a page, returns flashcards.
+One endpoint. Takes a base64 JPEG of a page, a PDF, or up to 20 JPEGs as
+`{ pages: [{ data, mediaType }, ...] }`, and returns flashcards.
 
 The Anthropic API key lives here and **never** ships inside the app. That is the
 only reason this server exists.

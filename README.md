@@ -19,8 +19,20 @@ Scan the QR code with Expo Go on your phone. The camera does not work in the
 iOS Simulator — you need a real device.
 
 The app talks to a small proxy that holds the Anthropic API key. Set it up
-first (`server/README.md`), then put its URL in `app.json` → `extra.apiBaseUrl`.
-Without it the scan button will fail with a network error.
+first (`server/README.md`). Without it every scan fails with "Can't reach the
+Cram API" and no deck is ever made. The short version:
+
+```powershell
+cd server
+npm install
+# open server/.env and paste your key after ANTHROPIC_API_KEY=
+node local.js
+```
+
+Leave `app.json` → `extra.apiBaseUrl` at `http://localhost:3000` while
+developing: on a phone in Expo Go the app swaps `localhost` for your laptop's
+address automatically (it borrows it from Metro). Both devices must be on the
+same wifi. Set it to the deployed URL only for a production build.
 
 ## Layout
 
@@ -144,6 +156,10 @@ just "more of the same". The check lives in `canUseDocuments()` in
   you know comes back in 1, 3, then ~8 days.
 - **Edit** in the study header fixes the card in front of you, or deletes it.
   The model misreads a number now and then; this is cheaper than a new scan.
+- **Review before you send.** Every photo - shutter or library - lands on a
+  review grid first. Shoot a whole lecture slide by slide, pick ten
+  screenshots at once from Photos, drop a blurry one, then make one deck from
+  all of them (up to 20 pages). A PDF skips review; there is nothing to look at.
 - **Add another page** after a run (or long-press a deck) puts the camera in
   append mode - the next scan's cards join that deck instead of making a new
   one. A lecture is thirty slides, not thirty decks.

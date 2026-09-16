@@ -15,6 +15,12 @@ const ACCEPTED = {
   'application/pdf': { kind: 'document', maxBytes: 16 * 1024 * 1024 },
 };
 
+// A lecture is a handful of slides photographed one after another. Twenty
+// pages at 1400px is ~20MB of base64 and well inside the model's limits;
+// past that the upload alone takes longer than anyone will wait.
+const MAX_PAGES = 20;
+const MAX_TOTAL_BYTES = 24 * 1024 * 1024;
+
 const DeckSchema = z.object({
   title: z.string().describe('Short deck name, 2-5 words, drawn from the content'),
   subject: z
@@ -87,32 +93,52 @@ export default async function handler(req, res) {
     return res.status(429).json({ error: 'rate_limited' });
   }
 
-  const { data, mediaType } = req.body || {};
-  if (typeof data !== 'string' || !data.length) {
-    return res.status(400).json({ error: 'missing_data' });
+  // Either one { data, mediaType } (a photo or a PDF) or { pages: [...] } of
+  // several photos that belong together. Normalise to a list.
+  const body = req.body || {};
+  const pages = Array.isArray(body.pages) ? body.pages : [body];
+  if (!pages.length || pages.length > MAX_PAGES) {
+    return res.status(400).json({ error: 'bad_page_count' });
   }
 
-  const spec = ACCEPTED[mediaType];
-  if (!spec) {
-    return res.status(415).json({ error: 'unsupported_media_type' });
-  }
-  if (data.length * 0.75 > spec.maxBytes) {
-    return res.status(413).json({ error: 'too_large' });
+  let kind = null;
+  let total = 0;
+  const blocks = [];
+  for (const page of pages) {
+    const { data, mediaType } = page || {};
+    if (typeof data !== 'string' || !data.length) {
+      return res.status(400).json({ error: 'missing_data' });
+    }
+    const spec = ACCEPTED[mediaType];
+    if (!spec) {
+      return res.status(415).json({ error: 'unsupported_media_type' });
+    }
+    // A PDF is already many pages; mixing one into a photo batch makes no
+    // sense and would blow the size budget.
+    if (spec.kind === 'document' && pages.length > 1) {
+      return res.status(400).json({ error: 'pdf_must_be_alone' });
+    }
+    const bytes = data.length * 0.75;
+    total += bytes;
+    if (bytes > spec.maxBytes || total > MAX_TOTAL_BYTES) {
+      return res.status(413).json({ error: 'too_large' });
+    }
+    kind = spec.kind;
+    // Image and PDF take different content-block types; everything downstream
+    // is identical, which is why the schema and prompt are shared.
+    const source = { type: 'base64', media_type: mediaType, data };
+    blocks.push(kind === 'document' ? { type: 'document', source } : { type: 'image', source });
   }
 
-  // Image and PDF take different content-block types; everything downstream
-  // is identical, which is why the schema and prompt are shared.
-  const source = { type: 'base64', media_type: mediaType, data };
-  const block =
-    spec.kind === 'document'
-      ? { type: 'document', source }
-      : { type: 'image', source };
+  const spec = { kind, multi: kind === 'document' || pages.length > 1 };
 
   try {
     const response = await client.messages.parse({
       model: MODEL,
-      // A long PDF can legitimately produce a hundred cards.
-      max_tokens: spec.kind === 'document' ? 32000 : 16000,
+      // A long PDF or a stack of photos can legitimately produce a hundred
+      // cards, and 120 cards is ~10k output tokens. Stay under ~21k: above
+      // that the SDK refuses non-streaming requests outright.
+      max_tokens: spec.multi ? 20000 : 12000,
       system: SYSTEM,
       // Low effort: this is extraction, not reasoning, and the product promise
       // is a fast turnaround. Raise to "medium" only if card quality
@@ -125,13 +151,15 @@ export default async function handler(req, res) {
         {
           role: 'user',
           content: [
-            block,
+            ...blocks,
             {
               type: 'text',
               text:
                 spec.kind === 'document'
                   ? 'Make flashcards from this document.'
-                  : 'Make flashcards from this page.',
+                  : blocks.length > 1
+                    ? `Make flashcards from these ${blocks.length} pages. They are consecutive pages of the same material, in order - treat them as one document.`
+                    : 'Make flashcards from this page.',
             },
           ],
         },

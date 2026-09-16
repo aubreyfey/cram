@@ -1,9 +1,12 @@
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 
+import { MAX_PAGES } from './api';
+
 /**
  * Each picker resolves to a source shape the API layer understands:
- *   { uri, kind: 'image' | 'pdf', size?, name? }
+ *   { kind: 'images', pages: [{ uri, size?, name? }], name? }
+ *   { kind: 'pdf', uri, size?, name? }
  * or null when the user backed out, which is not an error.
  */
 
@@ -19,17 +22,25 @@ export async function pickFromLibrary() {
     mediaTypes: ['images'],
     quality: 1,
     // No editing step - cropping a lecture slide before it is read only ever
-    // removes content the model wanted.
+    // removes content the model wanted. (It is also incompatible with
+    // multi-select.)
     allowsEditing: false,
+    // Ten screenshots of a lecture are one deck, not ten. Numbered badges so
+    // the pages come through in the order they were picked.
+    allowsMultipleSelection: true,
+    selectionLimit: MAX_PAGES,
+    orderedSelection: true,
   });
 
   if (result.canceled || !result.assets?.length) return null;
-  const asset = result.assets[0];
   return {
-    uri: asset.uri,
-    kind: 'image',
-    size: asset.fileSize,
-    name: asset.fileName || null,
+    kind: 'images',
+    pages: result.assets.map((a) => ({
+      uri: a.uri,
+      size: a.fileSize,
+      name: a.fileName || null,
+    })),
+    name: result.assets[0].fileName?.replace(/\.[^.]+$/, '') || null,
   };
 }
 
@@ -46,10 +57,7 @@ export async function pickDocument() {
     asset.mimeType === 'application/pdf' ||
     asset.name?.toLowerCase().endsWith('.pdf');
 
-  return {
-    uri: asset.uri,
-    kind: isPdf ? 'pdf' : 'image',
-    size: asset.size,
-    name: asset.name ? asset.name.replace(/\.[^.]+$/, '') : null,
-  };
+  const name = asset.name ? asset.name.replace(/\.[^.]+$/, '') : null;
+  if (isPdf) return { kind: 'pdf', uri: asset.uri, size: asset.size, name };
+  return { kind: 'images', pages: [{ uri: asset.uri, size: asset.size, name }], name };
 }

@@ -28,8 +28,11 @@ const PDF_STEPS = [
 
 export default function GeneratingScreen({ source, error, onRetry, onCancel }) {
   const isPdf = source?.kind === 'pdf';
-  const STEPS = isPdf ? PDF_STEPS : IMAGE_STEPS;
-  const photoUri = isPdf ? null : source?.uri;
+  const pageCount = source?.pages?.length ?? 1;
+  // A stack of photos takes as long as a PDF, so it gets the slower narration.
+  const slow = isPdf || pageCount > 1;
+  const STEPS = slow ? PDF_STEPS : IMAGE_STEPS;
+  const photoUri = isPdf ? null : (source?.pages?.[0]?.uri ?? source?.uri);
   const [step, setStep] = useState(0);
   const [frameH, setFrameH] = useState(0);
   const insets = useSafeAreaInsets();
@@ -57,10 +60,10 @@ export default function GeneratingScreen({ source, error, onRetry, onCancel }) {
     if (error) return;
     const t = setInterval(
       () => setStep((s) => Math.min(s + 1, STEPS.length - 1)),
-      isPdf ? 2600 : 1100,
+      slow ? 2600 : 1100,
     );
     return () => clearInterval(t);
-  }, [error, isPdf, STEPS.length]);
+  }, [error, slow, STEPS.length]);
 
   // translateY rather than an animated `top`: percentage layout props run on the
   // JS thread and stutter exactly when the device is busy encoding the photo.
@@ -89,6 +92,11 @@ export default function GeneratingScreen({ source, error, onRetry, onCancel }) {
           </View>
         ) : null}
         <View style={styles.veil} />
+        {pageCount > 1 ? (
+          <View style={styles.pageBadge}>
+            <Text style={styles.pageBadgeText}>{pageCount} PAGES</Text>
+          </View>
+        ) : null}
         {!error ? <Animated.View style={[styles.scanline, scanStyle]} /> : null}
       </Animated.View>
 
@@ -146,6 +154,16 @@ const styles = StyleSheet.create({
   docGlyph: { fontSize: 56, color: colors.accent },
   docName: { ...type.body, color: colors.textDim, textAlign: 'center' },
   veil: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(11,11,15,0.55)' },
+  pageBadge: {
+    position: 'absolute',
+    top: space(3),
+    right: space(3),
+    paddingHorizontal: space(2.5),
+    paddingVertical: space(1),
+    borderRadius: radius.pill,
+    backgroundColor: colors.accent,
+  },
+  pageBadgeText: { ...type.mono, fontSize: 10, color: colors.accentInk },
   scanline: {
     position: 'absolute',
     top: 0,

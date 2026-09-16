@@ -20,6 +20,8 @@ export default function CameraScreen({
   appendTo,
   onCancelAppend,
   onAdminTap,
+  pageCount = 0,
+  onOpenReview,
 }) {
   const [permission, requestPermission] = useCameraPermissions();
   const [busy, setBusy] = useState(false);
@@ -147,9 +149,23 @@ export default function CameraScreen({
         </View>
       ) : null}
 
-      <Text style={[styles.caption, { bottom: insets.bottom + space(30) }]}>
-        {appendTo ? 'Scan the next page of this deck' : 'Slides, textbook, handwriting, or a PDF'}
-      </Text>
+      {/* Pages already shot for this deck. Tapping goes back to review them;
+          the shutter keeps adding. */}
+      {pageCount > 0 ? (
+        <Pressable
+          onPress={onOpenReview}
+          style={[styles.pagesPill, { bottom: insets.bottom + space(30) }]}
+          hitSlop={8}
+        >
+          <Text style={styles.pagesText}>
+            {pageCount} {pageCount === 1 ? 'PAGE' : 'PAGES'}  ·  REVIEW
+          </Text>
+        </Pressable>
+      ) : (
+        <Text style={[styles.caption, { bottom: insets.bottom + space(30) }]}>
+          {appendTo ? 'Scan the next page of this deck' : 'Slides, textbook, handwriting, or a PDF'}
+        </Text>
+      )}
 
       <View style={[styles.bottomBar, { paddingBottom: insets.bottom + space(6) }]}>
         <Pressable onPress={onOpenLibrary} style={styles.sideSlot} hitSlop={16}>
@@ -251,6 +267,15 @@ const styles = StyleSheet.create({
     ...type.mono,
     color: 'rgba(255,255,255,0.55)',
   },
+  pagesPill: {
+    position: 'absolute',
+    alignSelf: 'center',
+    paddingHorizontal: space(4),
+    paddingVertical: space(2.5),
+    borderRadius: radius.pill,
+    backgroundColor: colors.accent,
+  },
+  pagesText: { ...type.mono, color: colors.accentInk },
   bottomBar: {
     position: 'absolute',
     bottom: 0,

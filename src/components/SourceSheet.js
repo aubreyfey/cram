@@ -28,7 +28,7 @@ const OPTIONS = [
     glyph: '􀏅',
     fallback: '▣',
     title: 'Photo library',
-    subtitle: 'A screenshot or photo you already have',
+    subtitle: 'One photo or a whole set of them',
   },
   {
     key: 'files',

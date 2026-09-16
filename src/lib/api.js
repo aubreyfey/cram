@@ -1,10 +1,27 @@
+import { Platform } from 'react-native';
 import Constants from 'expo-constants';
 import * as ImageManipulator from 'expo-image-manipulator';
 import { readBase64 } from './files';
 import { getAdminCode } from './storage';
 
-const BASE_URL =
-  Constants.expoConfig?.extra?.apiBaseUrl || 'http://localhost:3000';
+// On a phone, "localhost" is the phone. In development Metro already knows
+// the laptop's LAN address (it is how the phone loaded the bundle), so borrow
+// it rather than making anyone find their IP and edit app.json.
+function resolveBaseUrl() {
+  const configured = Constants.expoConfig?.extra?.apiBaseUrl || 'http://localhost:3000';
+  const isLocal = /\/\/(localhost|127\.0\.0\.1)(:|\/|$)/.test(configured);
+  if (__DEV__ && Platform.OS !== 'web' && isLocal) {
+    const host = Constants.expoConfig?.hostUri?.split(':')[0];
+    if (host) return configured.replace(/localhost|127\.0\.0\.1/, host);
+  }
+  return configured;
+}
+
+const BASE_URL = resolveBaseUrl();
+
+// Photos per deck. Matches the server; more than this and the upload takes
+// longer than the generation.
+export const MAX_PAGES = 20;
 
 // Claude accepts PDFs up to 32MB per request, but a file that size takes far
 // too long to upload on campus wifi to be worth attempting.
@@ -41,13 +58,29 @@ async function preparePdf(uri, size) {
 }
 
 /**
- * @param {{uri: string, kind: 'image'|'pdf', size?: number, name?: string}} source
+ * A source is one of:
+ *   { kind: 'pdf',    uri, size?, name? }
+ *   { kind: 'images', pages: [{ uri }], name? }   one or many photos, in order
+ *   { kind: 'image',  uri }                       shorthand for one page
  */
 export async function generateDeck(source, { signal } = {}) {
-  const { data, mediaType } =
-    source.kind === 'pdf'
-      ? await preparePdf(source.uri, source.size)
-      : await prepareImage(source.uri);
+  let body;
+  if (source.kind === 'pdf') {
+    body = await preparePdf(source.uri, source.size);
+  } else {
+    const pages = source.pages ?? [{ uri: source.uri }];
+    if (pages.length > MAX_PAGES) {
+      throw new ApiError(`That's a lot of pages. Try ${MAX_PAGES} or fewer at a time.`, 'too_many');
+    }
+    // One at a time - resizing twenty photos in parallel spikes memory on
+    // older phones, and the resize is fast next to the upload anyway.
+    const prepared = [];
+    for (const p of pages) {
+      if (signal?.aborted) throw Object.assign(new Error('aborted'), { name: 'AbortError' });
+      prepared.push(await prepareImage(p.uri));
+    }
+    body = prepared.length === 1 ? prepared[0] : { pages: prepared };
+  }
 
   const admin = await getAdminCode();
   let res;
@@ -59,7 +92,7 @@ export async function generateDeck(source, { signal } = {}) {
         'x-cram-key': Constants.expoConfig?.extra?.appKey ?? '',
         ...(admin ? { 'x-cram-admin': admin } : {}),
       },
-      body: JSON.stringify({ data, mediaType }),
+      body: JSON.stringify(body),
       signal,
     });
   } catch (e) {
@@ -110,6 +143,7 @@ export async function generateDeck(source, { signal } = {}) {
     subject: result.subject || null,
     createdAt: Date.now(),
     sourceKind: source.kind,
+    pageCount: source.pages?.length ?? 1,
     cards: result.cards.map((c, i) => ({
       id: `card_${Date.now()}_${i}`,
       front: c.front,
