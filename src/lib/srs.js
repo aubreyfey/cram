@@ -47,3 +47,11 @@ export function deckProgress(cards) {
   const learned = cards.filter((c) => c.srs && c.srs.reps >= 2).length;
   return learned / cards.length;
 }
+
+// Cards that would be served by dueCards without the "nothing due, show all"
+// fallback - what the library shows as "N due". Unstudied cards count as due
+// because they are exactly what the student should look at next.
+export function dueCount(cards) {
+  const now = Date.now();
+  return cards.filter((c) => !c.srs || c.srs.due <= now).length;
+}

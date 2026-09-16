@@ -3,8 +3,13 @@ import { Alert, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'r
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import PrimaryButton from '../components/PrimaryButton';
+import Constants from 'expo-constants';
 import { PLANS, purchase, restore } from '../lib/entitlements';
 import { colors, radius, space, type } from '../theme';
+
+// Apple rejects subscription apps whose legal links 404. These pages live in
+// public/ and ship with the web build, so they exist wherever that deploys.
+const SITE = Constants.expoConfig?.extra?.siteUrl ?? '';
 
 const BENEFITS = [
   'Unlimited cards, every day',
@@ -112,10 +117,10 @@ export default function PaywallScreen({ onClose, onPurchased, reason }) {
           <Pressable onPress={() => restore().catch((e) => Alert.alert('Restore', e.message))}>
             <Text style={styles.legal}>Restore</Text>
           </Pressable>
-          <Pressable onPress={() => Linking.openURL('https://cram.app/terms')}>
+          <Pressable onPress={() => Linking.openURL(`${SITE}/terms.html`)}>
             <Text style={styles.legal}>Terms</Text>
           </Pressable>
-          <Pressable onPress={() => Linking.openURL('https://cram.app/privacy')}>
+          <Pressable onPress={() => Linking.openURL(`${SITE}/privacy.html`)}>
             <Text style={styles.legal}>Privacy</Text>
           </Pressable>
         </View>

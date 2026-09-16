@@ -30,17 +30,21 @@ src/theme.js               all colors, type, motion — nothing hardcoded elsewh
 src/screens/
   CameraScreen.js          opens straight to camera, no home screen
   GeneratingScreen.js      the 2-4s wait, narrated
-  StudyScreen.js           card stack + rating
-  LibraryScreen.js         saved decks
+  StudyScreen.js           card stack + rating, edit/delete a card
+  LibraryScreen.js         saved decks, streak, review-what's-due
   PaywallScreen.js         three plans
 src/components/
   Flashcard.js             tap to flip, swipe to rate
+  CardEditor.js            fix a card the model got wrong
+  ErrorBoundary.js         crash screen with a way back
   PrimaryButton.js
 src/lib/
   api.js                   resize, upload, parse
-  storage.js               decks + daily free-tier meter (AsyncStorage)
+  storage.js               decks, free-tier meter, streak (AsyncStorage)
   srs.js                   trimmed SM-2 scheduling
+  share.js                 deck -> plain text for the share sheet
   entitlements.js          plans + the RevenueCat seam  ← see TODO
+public/                    terms + privacy, copied into the web build
 server/api/generate.js     the Claude call
 ```
 
@@ -69,10 +73,13 @@ App Store build or the product ships free.
 
 **3. Icon and splash** are still the Expo placeholders in `assets/`.
 
-**4. Terms and privacy URLs** in `PaywallScreen.js` point at `cram.app`, which
-does not exist yet. Apple rejects subscription apps without working links —
-this is the single most common rejection reason for this app category, so do
-not leave it to the submission.
+**4. Terms and privacy pages** are in `public/` and ship with the web build, so
+they are live wherever Vercel deploys it. Set `app.json` → `extra.siteUrl` to
+that domain (it defaults to `https://cram.vercel.app`, which is a guess). Apple
+rejects subscription apps whose legal links 404 — this is the single most
+common rejection reason for this app category, so open both links from the
+paywall on a real device before submitting. The pages are a plain-English
+draft, not legal advice; read them once.
 
 **5. The app key is a placeholder.** `app.json` → `extra.appKey` and the
 server's `CRAM_APP_KEY` both say `change-me`. They have to match.
@@ -118,6 +125,22 @@ does trip, they get a note, never the paywall they already bought.
 send. Gating it also gives the paywall something concrete to sell rather than
 just "more of the same". The check lives in `canUseDocuments()` in
 `src/lib/entitlements.js` — one function if you want to change the policy.
+
+## Studying
+
+- **Swipe or tap to rate.** Again / Hard / Got it feed a trimmed SM-2; a card
+  you know comes back in 1, 3, then ~8 days.
+- **Edit** in the study header fixes the card in front of you, or deletes it.
+  The model misreads a number now and then; this is cheaper than a new scan.
+- **Add another page** after a run (or long-press a deck) puts the camera in
+  append mode - the next scan's cards join that deck instead of making a new
+  one. A lecture is thirty slides, not thirty decks.
+- **Review what's due** on the library pulls every due card across every deck
+  into one session. Ratings route back to the deck each card came from.
+- **Streak** counts consecutive days with at least one card rated. Shown from
+  two days up; a single day is not a streak.
+- **Share deck** puts the cards on the share sheet as plain text - it reads
+  fine in iMessage and pastes into Anki.
 
 ## Design rules
 

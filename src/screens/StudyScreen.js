@@ -8,17 +8,27 @@ import Animated, {
   useSharedValue,
   withSpring,
 } from 'react-native-reanimated';
+import CardEditor from '../components/CardEditor';
 import Confetti from '../components/Confetti';
 import Mascot from '../components/Mascot';
 import Flashcard from '../components/Flashcard';
 import PrimaryButton from '../components/PrimaryButton';
 import { RATING, dueCards, schedule } from '../lib/srs';
+import { shareDeck } from '../lib/share';
 import { colors, motion, radius, space, type } from '../theme';
 
-export default function StudyScreen({ deck, onClose, onUpdateDeck }) {
-  const queue = useMemo(() => dueCards(deck.cards), [deck.id]);
+export default function StudyScreen({ deck, onClose, onUpdateDeck, onAddPages }) {
+  // The queue is a list of ids fixed at the start of the session; the cards
+  // themselves are looked up live so an edit shows on the card in front of
+  // you and a deleted card simply drops out of the run.
+  const queueIds = useMemo(() => dueCards(deck.cards).map((c) => c.id), [deck.id]);
+  const queue = useMemo(() => {
+    const byId = new Map(deck.cards.map((c) => [c.id, c]));
+    return queueIds.map((id) => byId.get(id)).filter(Boolean);
+  }, [queueIds, deck.cards]);
   const [index, setIndex] = useState(0);
   const [ratings, setRatings] = useState({});
+  const [editing, setEditing] = useState(false);
   const topCardRef = useRef(null);
 
   const progress = useSharedValue(0);
@@ -40,15 +50,26 @@ export default function StudyScreen({ deck, onClose, onUpdateDeck }) {
     if (!card) return;
 
     const updated = schedule(card, rating);
-    onUpdateDeck({
-      ...deck,
-      cards: deck.cards.map((c) => (c.id === updated.id ? updated : c)),
-    });
+    onUpdateDeck(
+      { ...deck, cards: deck.cards.map((c) => (c.id === updated.id ? updated : c)) },
+      { rated: true },
+    );
 
     setRatings((r) => ({ ...r, [rating]: (r[rating] || 0) + 1 }));
     const next = index + 1;
     progress.value = withSpring(next / queue.length, motion.soft);
     setIndex(next);
+  };
+
+  const saveCard = (card) => {
+    onUpdateDeck({
+      ...deck,
+      cards: deck.cards.map((c) => (c.id === card.id ? card : c)),
+    });
+  };
+
+  const deleteCard = (card) => {
+    onUpdateDeck({ ...deck, cards: deck.cards.filter((c) => c.id !== card.id) });
   };
 
   if (done) {
@@ -76,6 +97,20 @@ export default function StudyScreen({ deck, onClose, onUpdateDeck }) {
               : `${ratings[RATING.AGAIN]} coming back tomorrow.`}
           </Text>
           <PrimaryButton label="Done" onPress={onClose} style={{ marginTop: space(10) }} />
+          {/* The end of a run is when someone has the next slide in their
+              hand, so "add another page" lives here rather than in a menu.
+              A cross-deck session has no single deck to add to, so it only
+              gets share. */}
+          <View style={styles.afterRow}>
+            {onAddPages && !deck.virtual ? (
+              <Pressable onPress={() => onAddPages(deck)} hitSlop={8}>
+                <Text style={styles.afterLink}>Add another page</Text>
+              </Pressable>
+            ) : null}
+            <Pressable onPress={() => shareDeck(deck)} hitSlop={8}>
+              <Text style={styles.afterLink}>Share deck</Text>
+            </Pressable>
+          </View>
         </Animated.View>
       </View>
     );
@@ -94,6 +129,9 @@ export default function StudyScreen({ deck, onClose, onUpdateDeck }) {
         <Text style={styles.counter}>
           {index + 1} / {queue.length}
         </Text>
+        <Pressable onPress={() => setEditing(true)} hitSlop={16}>
+          <Text style={styles.edit}>Edit</Text>
+        </Pressable>
       </View>
 
       <Text style={styles.deckTitle} numberOfLines={1}>
@@ -123,6 +161,14 @@ export default function StudyScreen({ deck, onClose, onUpdateDeck }) {
         <RateButton label="Hard" color={colors.hard} onPress={() => requestRate(RATING.HARD)} />
         <RateButton label="Got it" color={colors.good} onPress={() => requestRate(RATING.GOOD)} />
       </View>
+
+      <CardEditor
+        card={queue[index]}
+        visible={editing}
+        onSave={saveCard}
+        onDelete={deleteCard}
+        onClose={() => setEditing(false)}
+      />
     </View>
   );
 }
@@ -145,6 +191,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: space(6),
   },
   close: { ...type.body, fontWeight: '700', color: colors.textDim },
+  edit: { ...type.body, fontWeight: '700', color: colors.accent },
   counter: { ...type.mono, color: colors.textDim },
   deckTitle: {
     ...type.title,
@@ -188,6 +235,8 @@ const styles = StyleSheet.create({
     marginTop: space(6),
     textAlign: 'center',
   },
+  afterRow: { flexDirection: 'row', gap: space(8), marginTop: space(6) },
+  afterLink: { ...type.body, fontWeight: '700', color: colors.textDim },
 });
 
 // Ticks the score up from 0 over ~600ms. Plain state rather than a worklet

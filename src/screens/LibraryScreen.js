@@ -4,12 +4,16 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import Mascot from '../components/Mascot';
 import PrimaryButton from '../components/PrimaryButton';
-import { deckProgress } from '../lib/srs';
+import { deckProgress, dueCount } from '../lib/srs';
+import { shareDeck } from '../lib/share';
 import { colors, radius, space, type } from '../theme';
 
 export default function LibraryScreen({
   decks,
+  streak = 0,
   onOpen,
+  onReviewDue,
+  onAddPages,
   onClose,
   onDelete,
   isPro,
@@ -17,6 +21,7 @@ export default function LibraryScreen({
   onLoadSample,
 }) {
   const insets = useSafeAreaInsets();
+  const totalDue = decks.reduce((n, d) => n + dueCount(d.cards), 0);
 
   const confirmDelete = (deck) => {
     Alert.alert('Delete deck?', `"${deck.title}" and its cards will be gone.`, [
@@ -25,14 +30,46 @@ export default function LibraryScreen({
     ]);
   };
 
+  // Long-press menu. A native alert rather than a custom sheet: three actions
+  // is the most this needs, and it matches the delete confirm already here.
+  const deckActions = (deck) => {
+    Alert.alert(deck.title, null, [
+      { text: 'Add pages to this deck', onPress: () => onAddPages(deck) },
+      { text: 'Share', onPress: () => shareDeck(deck) },
+      { text: 'Delete', style: 'destructive', onPress: () => confirmDelete(deck) },
+      { text: 'Cancel', style: 'cancel' },
+    ]);
+  };
+
   return (
     <View style={[styles.root, { paddingTop: insets.top + space(2) }]}>
       <View style={styles.header}>
-        <Text style={styles.title}>Your decks</Text>
+        <View style={styles.titleRow}>
+          <Text style={styles.title}>Your decks</Text>
+          {streak > 1 ? (
+            <View style={styles.streak}>
+              <Text style={styles.streakText}>{streak}-DAY STREAK</Text>
+            </View>
+          ) : null}
+        </View>
         <Pressable onPress={onClose} hitSlop={16}>
           <Text style={styles.close}>Camera</Text>
         </Pressable>
       </View>
+
+      {/* Only shown with two or more decks - with one, tapping the deck is
+          the same thing and the button would just be noise. */}
+      {decks.length > 1 && totalDue > 0 ? (
+        <Pressable style={styles.due} onPress={onReviewDue}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.dueTitle}>Review what's due</Text>
+            <Text style={styles.dueBody}>
+              {totalDue} {totalDue === 1 ? 'card' : 'cards'} across {decks.length} decks
+            </Text>
+          </View>
+          <Text style={styles.dueCta}>Start</Text>
+        </Pressable>
+      ) : null}
 
       {!isPro ? (
         <Pressable style={styles.upsell} onPress={onUpgrade}>
@@ -67,12 +104,13 @@ export default function LibraryScreen({
         }
         renderItem={({ item, index }) => {
           const pct = Math.round(deckProgress(item.cards) * 100);
+          const due = dueCount(item.cards);
           return (
             <Animated.View entering={FadeInDown.delay(index * 45).duration(320)}>
               <Pressable
                 style={styles.card}
                 onPress={() => onOpen(item)}
-                onLongPress={() => confirmDelete(item)}
+                onLongPress={() => deckActions(item)}
               >
                 <View style={styles.cardTop}>
                   <Text style={styles.cardTitle} numberOfLines={2}>
@@ -84,7 +122,10 @@ export default function LibraryScreen({
                 <View style={styles.track}>
                   <View style={[styles.fill, { width: `${pct}%` }]} />
                 </View>
-                <Text style={styles.meta}>{item.cards.length} cards</Text>
+                <Text style={styles.meta}>
+                  {item.cards.length} cards
+                  {due > 0 ? <Text style={styles.metaDue}>  ·  {due} due</Text> : null}
+                </Text>
               </Pressable>
             </Animated.View>
           );
@@ -102,8 +143,28 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: space(6),
   },
+  titleRow: { flexDirection: 'row', alignItems: 'center', gap: space(3), flex: 1 },
   title: { ...type.title, color: colors.text },
+  streak: {
+    paddingHorizontal: space(2.5),
+    paddingVertical: space(1),
+    borderRadius: radius.pill,
+    backgroundColor: colors.accent,
+  },
+  streakText: { ...type.mono, fontSize: 10, color: colors.accentInk },
   close: { ...type.body, fontWeight: '700', color: colors.accent },
+  due: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: space(6),
+    marginTop: space(5),
+    padding: space(5),
+    borderRadius: radius.lg,
+    backgroundColor: colors.accent,
+  },
+  dueTitle: { ...type.body, fontWeight: '800', color: colors.accentInk },
+  dueBody: { ...type.body, fontSize: 14, color: colors.accentInk, opacity: 0.7, marginTop: 2 },
+  dueCta: { ...type.label, color: colors.accentInk },
   upsell: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -139,6 +200,7 @@ const styles = StyleSheet.create({
   },
   fill: { height: 3, backgroundColor: colors.accent },
   meta: { ...type.body, fontSize: 13, color: colors.textDim, marginTop: space(3) },
+  metaDue: { color: colors.accent, fontWeight: '700' },
   empty: { alignItems: 'center', paddingTop: space(24), paddingHorizontal: space(8) },
   emptyTitle: { ...type.title, fontSize: 20, color: colors.text },
   emptyBody: {

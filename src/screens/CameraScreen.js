@@ -12,7 +12,14 @@ import * as Haptics from 'expo-haptics';
 import PrimaryButton from '../components/PrimaryButton';
 import { colors, motion, radius, space, type } from '../theme';
 
-export default function CameraScreen({ onCapture, onOpenLibrary, onOpenSource, quota }) {
+export default function CameraScreen({
+  onCapture,
+  onOpenLibrary,
+  onOpenSource,
+  quota,
+  appendTo,
+  onCancelAppend,
+}) {
   const [permission, requestPermission] = useCameraPermissions();
   const [busy, setBusy] = useState(false);
   const cameraRef = useRef(null);
@@ -109,8 +116,22 @@ export default function CameraScreen({ onCapture, onOpenLibrary, onOpenSource, q
         )}
       </View>
 
+      {/* Append mode. The banner is the only thing that says the next scan
+          goes into an existing deck, so it has to be impossible to miss and
+          one tap to get out of. */}
+      {appendTo ? (
+        <View style={[styles.appendBar, { top: insets.top + space(14) }]}>
+          <Text style={styles.appendText} numberOfLines={1}>
+            ADDING TO  <Text style={{ color: colors.text }}>{appendTo.title}</Text>
+          </Text>
+          <Pressable onPress={onCancelAppend} hitSlop={12}>
+            <Text style={styles.appendCancel}>✕</Text>
+          </Pressable>
+        </View>
+      ) : null}
+
       <Text style={[styles.caption, { bottom: insets.bottom + space(30) }]}>
-        Slides, textbook, handwriting, or a PDF
+        {appendTo ? 'Scan the next page of this deck' : 'Slides, textbook, handwriting, or a PDF'}
       </Text>
 
       <View style={[styles.bottomBar, { paddingBottom: insets.bottom + space(6) }]}>
@@ -190,6 +211,22 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.45)',
   },
   proPill: { backgroundColor: colors.accent },
+  appendBar: {
+    position: 'absolute',
+    alignSelf: 'center',
+    maxWidth: '84%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space(3),
+    paddingHorizontal: space(4),
+    paddingVertical: space(2.5),
+    borderRadius: radius.pill,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    borderWidth: 1,
+    borderColor: colors.accent + '88',
+  },
+  appendText: { ...type.mono, color: colors.accent, flexShrink: 1 },
+  appendCancel: { ...type.body, fontWeight: '700', color: colors.textDim },
   quotaText: { ...type.mono, color: colors.text },
   caption: {
     position: 'absolute',

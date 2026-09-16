@@ -1,0 +1,9 @@
+:root { color-scheme: dark; }
+body { margin: 0; background: #0B0B0F; color: #F5F5F7; font: 16px/1.6 -apple-system, system-ui, sans-serif; }
+main { max-width: 640px; margin: 0 auto; padding: 48px 20px 80px; }
+h1 { font-size: 32px; letter-spacing: -0.8px; margin: 0 0 4px; }
+h2 { font-size: 18px; margin: 32px 0 8px; }
+p, li { color: #C9C9D1; }
+.meta { color: #8E8E9A; font-size: 13px; letter-spacing: 1px; text-transform: uppercase; }
+a { color: #D4FF3F; }
+nav { margin-top: 48px; font-size: 14px; }

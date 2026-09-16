@@ -4,6 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
+import ErrorBoundary from './src/components/ErrorBoundary';
 import Screen from './src/components/Screen';
 import SourceSheet from './src/components/SourceSheet';
 import CameraScreen from './src/screens/CameraScreen';
@@ -14,7 +15,15 @@ import PaywallScreen from './src/screens/PaywallScreen';
 
 import { generateDeck } from './src/lib/api';
 import { pickDocument, pickFromLibrary } from './src/lib/pickers';
-import { addUsage, deleteDeck, loadDecks, saveDeck } from './src/lib/storage';
+import {
+  addUsage,
+  deleteDeck,
+  getStreak,
+  loadDecks,
+  saveCards,
+  saveDeck,
+  touchStreak,
+} from './src/lib/storage';
 import { canUseDocuments, checkQuota, isSubscribed } from './src/lib/entitlements';
 import { makeSampleDeck } from './src/lib/sampleDeck';
 import { colors } from './src/theme';
@@ -29,42 +38,59 @@ export default function App() {
   const [pro, setPro] = useState(false);
   const [paywallReason, setPaywallReason] = useState(null);
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [streak, setStreak] = useState(0);
+  // When set, the next scan's cards are appended to this deck instead of
+  // making a new one. A lecture is thirty slides, not thirty decks.
+  const [appendTo, setAppendTo] = useState(null);
 
   const abortRef = useRef(null);
+  const activeRef = useRef(null);
+  activeRef.current = activeDeck;
 
   const refresh = useCallback(async () => {
     setDecks(await loadDecks());
     setQuota(await checkQuota());
     setPro(await isSubscribed());
+    setStreak((await getStreak()).count);
   }, []);
 
   useEffect(() => {
     refresh();
   }, [refresh]);
 
-  const run = useCallback(async (src) => {
-    setError(null);
-    abortRef.current?.abort();
-    const controller = new AbortController();
-    abortRef.current = controller;
+  const run = useCallback(
+    async (src) => {
+      setError(null);
+      abortRef.current?.abort();
+      const controller = new AbortController();
+      abortRef.current = controller;
 
-    try {
-      const deck = await generateDeck(src, { signal: controller.signal });
-      if (controller.signal.aborted) return;
+      try {
+        const fresh = await generateDeck(src, { signal: controller.signal });
+        if (controller.signal.aborted) return;
 
-      setDecks(await saveDeck(deck));
-      // Recorded for everyone, not just free users - subscribers don't meter
-      // cards, but their scans still cost us money and feed the fair-use check.
-      await addUsage(deck.cards.length);
-      setQuota(await checkQuota());
+        // Appending keeps the original deck's title and schedule; the new
+        // cards simply arrive unstudied and are due immediately.
+        const deck = appendTo
+          ? { ...appendTo, cards: [...appendTo.cards, ...fresh.cards] }
+          : fresh;
 
-      setActiveDeck(deck);
-      setScreen('study');
-    } catch (e) {
-      if (e.name === 'AbortError') return;
-      setError(e);
-    }
-  }, []);
+        setDecks(await saveDeck(deck));
+        // Recorded for everyone, not just free users - subscribers don't meter
+        // cards, but their scans still cost us money and feed the fair-use check.
+        await addUsage(fresh.cards.length);
+        setQuota(await checkQuota());
+
+        setAppendTo(null);
+        setActiveDeck(deck);
+        setScreen('study');
+      } catch (e) {
+        if (e.name === 'AbortError') return;
+        setError(e);
+      }
+    },
+    [appendTo],
+  );
 
   // Check the wall before spending a request, not after - showing cards and
   // then taking them away is the one thing that makes people delete an app.
@@ -115,9 +141,43 @@ export default function App() {
     [start],
   );
 
-  const updateDeck = useCallback(async (deck) => {
+  const updateDeck = useCallback(async (deck, { rated } = {}) => {
+    if (rated) setStreak((await touchStreak()).count);
+    const prev = activeRef.current;
     setActiveDeck(deck);
+
+    // A cross-deck session is a view over other decks, never saved as its own.
+    // Each card carries the id of the deck it came from; anything that was in
+    // the session and isn't any more was deleted.
+    if (deck.virtual) {
+      const kept = new Set(deck.cards.map((c) => c.id));
+      const removed = (prev?.cards ?? []).filter((c) => !kept.has(c.id)).map((c) => c.id);
+      setDecks(await saveCards(deck.cards, removed));
+      return;
+    }
     setDecks(await saveDeck(deck));
+  }, []);
+
+  // Everything due, across every deck, oldest first. Cards remember their
+  // deck so ratings route back to the right place.
+  const reviewDue = useCallback(() => {
+    const now = Date.now();
+    const cards = decks
+      .flatMap((d) =>
+        d.cards
+          .filter((c) => !c.srs || c.srs.due <= now)
+          .map((c) => ({ ...c, deckId: d.id })),
+      )
+      .sort((a, b) => (a.srs?.due ?? 0) - (b.srs?.due ?? 0));
+    if (!cards.length) return;
+    setActiveDeck({ id: `due_${now}`, title: 'Due today', virtual: true, createdAt: now, cards });
+    setScreen('study');
+  }, [decks]);
+
+  const addPages = useCallback((deck) => {
+    setAppendTo(deck);
+    setActiveDeck(null);
+    setScreen('camera');
   }, []);
 
   const cancel = useCallback(() => {
@@ -129,6 +189,7 @@ export default function App() {
 
   const backToCamera = useCallback(() => {
     setActiveDeck(null);
+    setAppendTo(null);
     setSource(null);
     setScreen('camera');
   }, []);
@@ -137,84 +198,92 @@ export default function App() {
     <SafeAreaProvider>
       <GestureHandlerRootView style={styles.root}>
         <StatusBar style="light" />
-        <View style={styles.root}>
-          {screen === 'camera' && (
-            <Screen preset="fade">
-              <CameraScreen
-                quota={pro ? { remaining: Infinity } : quota}
-                onCapture={start}
-                onOpenSource={() => setSheetOpen(true)}
-                onOpenLibrary={() => setScreen('library')}
-              />
-            </Screen>
-          )}
+        <ErrorBoundary>
+          <View style={styles.root}>
+            {screen === 'camera' && (
+              <Screen preset="fade">
+                <CameraScreen
+                  quota={pro ? { remaining: Infinity } : quota}
+                  appendTo={appendTo}
+                  onCancelAppend={() => setAppendTo(null)}
+                  onCapture={start}
+                  onOpenSource={() => setSheetOpen(true)}
+                  onOpenLibrary={() => setScreen('library')}
+                />
+              </Screen>
+            )}
 
-          {screen === 'generating' && (
-            <Screen preset="fade">
-              <GeneratingScreen
-                source={source}
-                error={error}
-                onRetry={() => {
-                  setError(null);
-                  run(source);
-                }}
-                onCancel={cancel}
-              />
-            </Screen>
-          )}
+            {screen === 'generating' && (
+              <Screen preset="fade">
+                <GeneratingScreen
+                  source={source}
+                  error={error}
+                  onRetry={() => {
+                    setError(null);
+                    run(source);
+                  }}
+                  onCancel={cancel}
+                />
+              </Screen>
+            )}
 
-          {screen === 'study' && activeDeck && (
-            <Screen preset="push">
-              <StudyScreen
-                deck={activeDeck}
-                onUpdateDeck={updateDeck}
-                onClose={backToCamera}
-              />
-            </Screen>
-          )}
+            {screen === 'study' && activeDeck && (
+              <Screen preset="push">
+                <StudyScreen
+                  deck={activeDeck}
+                  onUpdateDeck={updateDeck}
+                  onAddPages={addPages}
+                  onClose={backToCamera}
+                />
+              </Screen>
+            )}
 
-          {screen === 'library' && (
-            <Screen preset="push">
-              <LibraryScreen
-                decks={decks}
-                isPro={pro}
-                onOpen={(deck) => {
-                  setActiveDeck(deck);
-                  setScreen('study');
-                }}
-                onDelete={async (id) => setDecks(await deleteDeck(id))}
-                onLoadSample={async () => {
-                  setDecks(await saveDeck(makeSampleDeck()));
-                }}
-                onUpgrade={() => {
-                  setPaywallReason('library');
-                  setScreen('paywall');
-                }}
-                onClose={() => setScreen('camera')}
-              />
-            </Screen>
-          )}
+            {screen === 'library' && (
+              <Screen preset="push">
+                <LibraryScreen
+                  decks={decks}
+                  streak={streak}
+                  isPro={pro}
+                  onOpen={(deck) => {
+                    setActiveDeck(deck);
+                    setScreen('study');
+                  }}
+                  onReviewDue={reviewDue}
+                  onAddPages={addPages}
+                  onDelete={async (id) => setDecks(await deleteDeck(id))}
+                  onLoadSample={async () => {
+                    setDecks(await saveDeck(makeSampleDeck()));
+                  }}
+                  onUpgrade={() => {
+                    setPaywallReason('library');
+                    setScreen('paywall');
+                  }}
+                  onClose={() => setScreen('camera')}
+                />
+              </Screen>
+            )}
 
-          {screen === 'paywall' && (
-            <Screen preset="modal">
-              <PaywallScreen
-                reason={paywallReason}
-                onClose={() => setScreen('camera')}
-                onPurchased={async () => {
-                  await refresh();
-                  setScreen('camera');
-                }}
-              />
-            </Screen>
-          )}
+            {screen === 'paywall' && (
+              <Screen preset="modal">
+                <PaywallScreen
+                  reason={paywallReason}
+                  onClose={() => setScreen('camera')}
+                  onPurchased={async () => {
+                    await refresh();
+                    setScreen('camera');
+                  }}
+                />
+              </Screen>
+            )}
 
-          <SourceSheet
-            visible={sheetOpen}
-            isPro={pro}
-            onPick={handlePick}
-            onClose={() => setSheetOpen(false)}
-          />
-        </View>
+            <SourceSheet
+              visible={sheetOpen}
+              isPro={pro}
+              onPick={handlePick}
+              onClose={() => setSheetOpen(false)}
+            />
+          </View>
+        </ErrorBoundary>
       </GestureHandlerRootView>
     </SafeAreaProvider>
   );
