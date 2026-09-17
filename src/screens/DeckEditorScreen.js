@@ -134,7 +134,7 @@ export default function DeckEditorScreen({ onSave, onClose, initialText = '' }) 
               onChangeText={setPasteText}
               multiline
               autoFocus
-              placeholder={'Q: What is osmosis?\nA: Water moving across a membrane\n\nor  term - definition, one per line'}
+              placeholder={'What is osmosis?\nWater moving across a membrane\n\nWhat is ATP?\nEnergy currency of the cell'}
               placeholderTextColor={colors.textFaint}
             />
             <View style={styles.pasteRow}>
@@ -142,8 +142,8 @@ export default function DeckEditorScreen({ onSave, onClose, initialText = '' }) 
                 {pasteText.trim()
                   ? parsed.length
                     ? `${parsed.length} ${parsed.length === 1 ? 'card' : 'cards'} found`
-                    : 'No cards found yet - try "term - definition"'
-                  : 'Q: / A: lines, tabs, or " - " all work'}
+                    : 'No cards yet - put each answer on the line after its question'
+                  : 'Question, then answer on the next line. Or "term - definition".'}
               </Text>
               <PrimaryButton
                 label={parsed.length ? `Add ${parsed.length}` : 'Add'}
