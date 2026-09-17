@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import {
-  Alert,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -15,6 +14,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import PrimaryButton from './PrimaryButton';
 import { colors, radius, space, type } from '../theme';
+import { alert } from '../lib/alert';
 
 // The model gets a card wrong now and then - a misread number, a hint that
 // gives the answer away. Without this the only fix is deleting the whole deck,
@@ -34,7 +34,7 @@ export default function CardEditor({ card, visible, onSave, onDelete, onClose })
 
   const save = () => {
     if (!front.trim() || !back.trim()) {
-      Alert.alert('Both sides needed', 'A card needs a question and an answer.');
+      alert('Both sides needed', 'A card needs a question and an answer.');
       return;
     }
     onSave({ ...card, front: front.trim(), back: back.trim(), hint: hint.trim() || null });
@@ -42,7 +42,7 @@ export default function CardEditor({ card, visible, onSave, onDelete, onClose })
   };
 
   const remove = () => {
-    Alert.alert('Delete this card?', "It won't come back.", [
+    alert('Delete this card?', "It won't come back.", [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Delete',

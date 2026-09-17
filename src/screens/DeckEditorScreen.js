@@ -1,6 +1,5 @@
 import React, { useMemo, useState } from 'react';
 import {
-  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -15,8 +14,9 @@ import Animated, { FadeInDown, FadeOut } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 import Mascot from '../components/Mascot';
 import PrimaryButton from '../components/PrimaryButton';
-import { makeManualDeck, parseCards } from '../lib/parseCards';
+import { linesAsQuestions, makeManualDeck, parseCards } from '../lib/parseCards';
 import { colors, radius, space, type } from '../theme';
+import { alert } from '../lib/alert';
 
 // The free path. No model, no server, no quota: type cards, or paste notes
 // or a deck a friend shared and let the parser split them. One student
@@ -31,6 +31,10 @@ export default function DeckEditorScreen({ onSave, onClose, initialText = '' }) 
   const [pasteText, setPasteText] = useState(initialText);
 
   const parsed = useMemo(() => parseCards(pasteText), [pasteText]);
+  // When nothing pairs up, offer the lines as questions to answer by hand -
+  // the Add button must never be a dead end.
+  const fallback = useMemo(() => (parsed.length ? [] : linesAsQuestions(pasteText)), [parsed, pasteText]);
+  const toAdd = parsed.length ? parsed : fallback;
   const filled = rows.filter((r) => r.front.trim() && r.back.trim());
 
   const update = (key, field, value) =>
@@ -47,12 +51,12 @@ export default function DeckEditorScreen({ onSave, onClose, initialText = '' }) 
   };
 
   const usePasted = () => {
-    if (!parsed.length) return;
+    if (!toAdd.length) return;
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     // Pasted cards replace empty rows and sit after any typed ones.
     setRows((rs) => [
       ...rs.filter((r) => r.front.trim() || r.back.trim()),
-      ...parsed.map((c) => ({ ...blank(), ...c })),
+      ...toAdd.map((c) => ({ ...blank(), ...c })),
     ]);
     // A shared deck's first line is its title; borrow it if none typed.
     if (!title.trim()) {
@@ -67,13 +71,13 @@ export default function DeckEditorScreen({ onSave, onClose, initialText = '' }) 
 
   const save = () => {
     if (!filled.length) {
-      Alert.alert('Nothing to save yet', 'Add at least one card with both sides filled in.');
+      alert('Nothing to save yet', 'Add at least one card with both sides filled in.');
       return;
     }
     const half = rows.length - filled.length - rows.filter((r) => !r.front.trim() && !r.back.trim()).length;
     const go = () => onSave(makeManualDeck({ title, cards: filled }));
     if (half > 0) {
-      Alert.alert(
+      alert(
         `${half} ${half === 1 ? 'card is' : 'cards are'} half done`,
         "They'll be left out. Save anyway?",
         [
@@ -142,11 +146,13 @@ export default function DeckEditorScreen({ onSave, onClose, initialText = '' }) 
                 {pasteText.trim()
                   ? parsed.length
                     ? `${parsed.length} ${parsed.length === 1 ? 'card' : 'cards'} found`
-                    : 'No cards yet - put each answer on the line after its question'
+                    : fallback.length
+                      ? `No pairs found - add ${fallback.length} as questions and type the answers`
+                      : 'No cards yet'
                   : 'Question, then answer on the next line. Or "term - definition".'}
               </Text>
               <PrimaryButton
-                label={parsed.length ? `Add ${parsed.length}` : 'Add'}
+                label={toAdd.length ? `Add ${toAdd.length}` : 'Add'}
                 variant={parsed.length ? 'accent' : 'solid'}
                 onPress={usePasted}
                 style={styles.pasteButton}

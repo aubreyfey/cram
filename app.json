@@ -51,7 +51,10 @@
       [
         "expo-notifications",
         {
-          "color": "#D4FF3F"
+          "color": "#D4FF3F",
+          "sounds": [
+            "./assets/sounds/volt-alarm.wav"
+          ]
         }
       ]
     ],

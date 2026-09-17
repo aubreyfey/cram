@@ -1,5 +1,6 @@
-import { Alert, Platform, Share } from 'react-native';
+import { Platform, Share } from 'react-native';
 import { exportDeckFile } from './backup';
+import { alert } from './alert';
 
 // Plain text, one Q/A pair per block. Readable in iMessage, pastes cleanly into
 // Notes or a group chat, and Anki's importer picks up the "Q:"/"A:" lines with
@@ -25,7 +26,7 @@ export async function shareDeckText(deck) {
 // copy that opens in Cram with hints and scheduling intact.
 export function shareDeck(deck) {
   if (Platform.OS === 'web') return shareDeckText(deck);
-  Alert.alert('Share deck', null, [
+  alert('Share deck', null, [
     { text: 'As text - paste anywhere', onPress: () => shareDeckText(deck) },
     { text: 'As a file - opens in Cram', onPress: () => exportDeckFile(deck).catch(() => {}) },
     { text: 'Cancel', style: 'cancel' },

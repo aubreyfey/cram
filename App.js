@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Alert, StyleSheet, View } from 'react-native';
+import { AppState, StyleSheet, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -32,8 +32,9 @@ import {
 import { canUseDocuments, checkQuota, disableAdmin, isSubscribed } from './src/lib/entitlements';
 import { makeSampleDeck } from './src/lib/sampleDeck';
 import { mergeDecks, readDeckFile } from './src/lib/backup';
-import { configureNotifications } from './src/lib/reminders';
+import { configureNotifications, rearmNag } from './src/lib/reminders';
 import { colors } from './src/theme';
+import { alert } from './src/lib/alert';
 
 export default function App() {
   const [screen, setScreen] = useState('camera');
@@ -68,6 +69,13 @@ export default function App() {
   useEffect(() => {
     refresh();
     configureNotifications();
+    // Opening the app is proof of life: push the missed-study alarm to
+    // tomorrow. Also re-arm whenever the app comes back to the foreground.
+    rearmNag();
+    const sub = AppState.addEventListener('change', (s) => {
+      if (s === 'active') rearmNag();
+    });
+    return () => sub.remove();
   }, [refresh]);
 
   const run = useCallback(
@@ -119,7 +127,7 @@ export default function App() {
         // A subscriber who hits the fair-use ceiling is a paying customer, not
         // a lead - show them a note, never the paywall they already bought.
         if (q.fairUse) {
-          Alert.alert(
+          alert(
             "That's a lot of scanning",
             "You've hit today's limit. It resets at midnight - and if you genuinely need more, tell us.",
           );
@@ -187,7 +195,7 @@ export default function App() {
         }
         addPages(picked.pages);
       } catch (e) {
-        Alert.alert("Couldn't open that", e.message);
+        alert("Couldn't open that", e.message);
       }
     },
     [start, addPages, importDecks],
@@ -242,7 +250,7 @@ export default function App() {
   // the paywall and free tier can be checked on the same phone.
   const adminTap = useCallback(() => {
     if (quota.admin) {
-      Alert.alert('Admin is on', 'Turn it off to see the app as a normal user?', [
+      alert('Admin is on', 'Turn it off to see the app as a normal user?', [
         { text: 'Keep', style: 'cancel' },
         {
           text: 'Turn off',

@@ -164,8 +164,14 @@ just "more of the same". The check lives in `canUseDocuments()` in
   rates the same cards into the same SM-2 schedule.
 - **Swipe or tap to rate.** Again / Hard / Got it feed a trimmed SM-2; a card
   you know comes back in 1, 3, then ~8 days.
-- **Daily reminder.** Settings (gear in the library) → pick a time. A local
-  notification, nothing leaves the phone. Not available on web.
+- **Daily reminder, and the nag.** Settings (gear in the library) → pick a
+  time. Five minutes after the reminder, if the app has not been opened, a
+  second one fires with its own alarm sound and vibration, marked
+  time-sensitive so it gets through Focus. Opening the app cancels it.
+  "Send me a test alarm" plays the loud one 30 seconds later so it can be
+  heard today. Local notifications only; the custom sound needs a real build
+  (Expo Go plays the default sound). Not available on web. What it cannot do:
+  ring like a phone call - Apple only allows that for real VoIP calls.
 - **Backup and restore.** Settings → Export all decks writes one JSON file
   you can keep in Files, iCloud Drive or an email. Import merges it back and
   never rolls progress back. Share deck → "As a file" uses the same format,

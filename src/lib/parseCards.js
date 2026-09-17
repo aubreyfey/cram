@@ -45,6 +45,18 @@ export function parseCards(text) {
   const lines = text.replace(/\r/g, '').split('\n');
   const cards = [];
 
+  // Pass 0: both halves on one line - 'Q: What is X? A: Y'.
+  const INLINE = /^\s*(?:\d+[.)]\s*)?(?:q|question)\s*[:.]\s*(.+?)\s+(?:a|answer)\s*[:.]\s*(.+)$/i;
+  let inline = 0;
+  for (const raw of lines) {
+    const m = raw.match(INLINE);
+    if (m) {
+      inline++;
+      cards.push({ front: clean(m[1]), back: clean(m[2]) });
+    }
+  }
+  if (inline) return cards;
+
   // Pass 1: Q/A pairs.
   let q = null;
   let a = null;
@@ -133,4 +145,15 @@ export function makeManualDeck({ title, subject, cards }) {
       hint: c.hint || null,
     })),
   };
+}
+
+// Last resort when nothing parses: every non-blank line becomes a question
+// with the answer left for the student to type. Pasting a list of terms or
+// headings should never dead-end.
+export function linesAsQuestions(text) {
+  return (text || '')
+    .split('\n')
+    .map((l) => clean(l))
+    .filter(Boolean)
+    .map((front) => ({ front, back: '' }));
 }

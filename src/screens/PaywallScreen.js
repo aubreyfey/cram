@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { Alert, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import PrimaryButton from '../components/PrimaryButton';
 import Constants from 'expo-constants';
 import { PLANS, purchase, restore } from '../lib/entitlements';
 import { colors, radius, space, type } from '../theme';
+import { alert } from '../lib/alert';
 
 // Apple rejects subscription apps whose legal links 404. These pages live in
 // public/ and ship with the web build, so they exist wherever that deploys.
@@ -44,7 +45,7 @@ export default function PaywallScreen({ onClose, onPurchased, reason }) {
       await purchase(selected);
       onPurchased();
     } catch (e) {
-      Alert.alert('Not available yet', e.message);
+      alert('Not available yet', e.message);
     } finally {
       setBusy(false);
     }
@@ -114,7 +115,7 @@ export default function PaywallScreen({ onClose, onPurchased, reason }) {
           onPress={buy}
         />
         <View style={styles.legalRow}>
-          <Pressable onPress={() => restore().catch((e) => Alert.alert('Restore', e.message))}>
+          <Pressable onPress={() => restore().catch((e) => alert('Restore', e.message))}>
             <Text style={styles.legal}>Restore</Text>
           </Pressable>
           <Pressable onPress={() => Linking.openURL(`${SITE}/terms.html`)}>

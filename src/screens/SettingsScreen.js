@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import {
-  Alert,
   Linking,
   Platform,
   Pressable,
@@ -15,8 +14,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import { exportBackup, pickDeckFile } from '../lib/backup';
 import { restore } from '../lib/entitlements';
-import { REMINDER_TIMES, getReminder, setReminder } from '../lib/reminders';
+import { REMINDER_TIMES, getReminder, sendTestAlarm, setReminder } from '../lib/reminders';
 import { colors, radius, space, type } from '../theme';
+import { alert } from '../lib/alert';
 
 const SITE = Constants.expoConfig?.extra?.siteUrl ?? '';
 const VERSION = Constants.expoConfig?.version ?? '';
@@ -25,7 +25,8 @@ const VERSION = Constants.expoConfig?.version ?? '';
 // a person does once - turn on the reminder, back up, restore a purchase.
 export default function SettingsScreen({ onClose, onImport, tier, deckCount }) {
   const insets = useSafeAreaInsets();
-  const [reminder, setRem] = useState({ enabled: false, hour: 20, minute: 0 });
+  const [reminder, setRem] = useState({ enabled: false, hour: 20, minute: 0, nag: true });
+  const [testArmed, setTestArmed] = useState(false);
   const [busy, setBusy] = useState(null);
 
   useEffect(() => {
@@ -37,9 +38,9 @@ export default function SettingsScreen({ onClose, onImport, tier, deckCount }) {
     const result = await setReminder(next);
     setRem(result);
     if (result.unsupported) {
-      Alert.alert('Not on the web', 'Reminders work in the iPhone and Android app.');
+      alert('Not on the web', 'Reminders work in the iPhone and Android app.');
     } else if (result.denied) {
-      Alert.alert(
+      alert(
         'Notifications are off',
         'Turn them on for Cram in Settings to get a daily nudge.',
         [
@@ -50,13 +51,22 @@ export default function SettingsScreen({ onClose, onImport, tier, deckCount }) {
     }
   };
 
+  const testAlarm = async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    const r = await sendTestAlarm();
+    if (r.unsupported) return alert('Not on the web', 'The alarm works in the iPhone and Android app.');
+    if (r.denied) return alert('Notifications are off', 'Turn them on for Cram in Settings first.');
+    setTestArmed(true);
+    setTimeout(() => setTestArmed(false), 35000);
+  };
+
   const doExport = async () => {
     setBusy('export');
     try {
       const n = await exportBackup();
-      if (Platform.OS === 'web') Alert.alert('Downloaded', `${n} decks saved to a file.`);
+      if (Platform.OS === 'web') alert('Downloaded', `${n} decks saved to a file.`);
     } catch (e) {
-      Alert.alert("Couldn't export", e.message);
+      alert("Couldn't export", e.message);
     } finally {
       setBusy(null);
     }
@@ -69,10 +79,10 @@ export default function SettingsScreen({ onClose, onImport, tier, deckCount }) {
       if (decks) {
         const n = await onImport(decks);
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        Alert.alert('Imported', `${n} ${n === 1 ? 'deck' : 'decks'} added.`);
+        alert('Imported', `${n} ${n === 1 ? 'deck' : 'decks'} added.`);
       }
     } catch (e) {
-      Alert.alert("Couldn't import", e.message);
+      alert("Couldn't import", e.message);
     } finally {
       setBusy(null);
     }
@@ -117,6 +127,23 @@ export default function SettingsScreen({ onClose, onImport, tier, deckCount }) {
               );
             })}
           </View>
+          <Row
+            label="Nag me if I ignore it"
+            sub={reminder.nag ? 'Five minutes later, louder. Volt does not let it go.' : 'Just the one reminder'}
+            right={
+              <Switch
+                value={reminder.nag}
+                onValueChange={(v) => applyReminder({ ...reminder, nag: v })}
+                trackColor={{ true: colors.accent, false: colors.line }}
+                thumbColor={Platform.OS === 'android' ? colors.text : undefined}
+              />
+            }
+          />
+          <Row
+            label={testArmed ? 'Coming in 30 seconds - lock your phone' : 'Send me a test alarm'}
+            sub="Hear the loud one now instead of waiting until tomorrow"
+            onPress={testArmed ? null : testAlarm}
+          />
         </Section>
 
         <Section title="BACKUP">
@@ -145,7 +172,7 @@ export default function SettingsScreen({ onClose, onImport, tier, deckCount }) {
           />
           <Row
             label="Restore purchases"
-            onPress={() => restore().catch((e) => Alert.alert('Restore', e.message))}
+            onPress={() => restore().catch((e) => alert('Restore', e.message))}
           />
         </Section>
 

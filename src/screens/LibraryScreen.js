@@ -1,5 +1,5 @@
 import React from 'react';
-import { Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, {
   FadeInDown,
@@ -14,6 +14,7 @@ import PrimaryButton from '../components/PrimaryButton';
 import { deckProgress, dueCount } from '../lib/srs';
 import { shareDeck } from '../lib/share';
 import { colors, motion, radius, space, type } from '../theme';
+import { alert } from '../lib/alert';
 
 export default function LibraryScreen({
   decks,
@@ -33,7 +34,7 @@ export default function LibraryScreen({
   const totalDue = decks.reduce((n, d) => n + dueCount(d.cards), 0);
 
   const confirmDelete = (deck) => {
-    Alert.alert('Delete deck?', `"${deck.title}" and its cards will be gone.`, [
+    alert('Delete deck?', `"${deck.title}" and its cards will be gone.`, [
       { text: 'Cancel', style: 'cancel' },
       { text: 'Delete', style: 'destructive', onPress: () => onDelete(deck.id) },
     ]);
@@ -42,7 +43,7 @@ export default function LibraryScreen({
   // Long-press menu. A native alert rather than a custom sheet: three actions
   // is the most this needs, and it matches the delete confirm already here.
   const deckActions = (deck) => {
-    Alert.alert(deck.title, null, [
+    alert(deck.title, null, [
       { text: 'Add pages to this deck', onPress: () => onAddPages(deck) },
       { text: 'Share', onPress: () => shareDeck(deck) },
       { text: 'Delete', style: 'destructive', onPress: () => confirmDelete(deck) },
