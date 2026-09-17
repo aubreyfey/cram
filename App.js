@@ -17,6 +17,7 @@ import ReviewScreen from './src/screens/ReviewScreen';
 import DeckEditorScreen from './src/screens/DeckEditorScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
 import FeedbackScreen from './src/screens/FeedbackScreen';
+import ExamEditorScreen from './src/screens/ExamEditorScreen';
 
 import { MAX_PAGES, generateDeck } from './src/lib/api';
 import { pickDocument, pickFromLibrary } from './src/lib/pickers';
@@ -25,11 +26,15 @@ import {
   deleteDeck,
   getStreak,
   loadDecks,
+  deleteExam,
+  loadExams,
   saveAllDecks,
   saveCards,
   saveDeck,
+  saveExam,
   touchStreak,
 } from './src/lib/storage';
+import { examDecks, upcoming } from './src/lib/exams';
 import { canUseDocuments, checkQuota, disableAdmin, isSubscribed } from './src/lib/entitlements';
 import { makeSampleDeck } from './src/lib/sampleDeck';
 import { mergeDecks, readDeckFile } from './src/lib/backup';
@@ -49,6 +54,8 @@ export default function App() {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [adminOpen, setAdminOpen] = useState(false);
   const [streak, setStreak] = useState(0);
+  const [exams, setExams] = useState([]);
+  const [editingExam, setEditingExam] = useState(null);
   // When set, the next scan's cards are appended to this deck instead of
   // making a new one. A lecture is thirty slides, not thirty decks.
   const [appendTo, setAppendTo] = useState(null);
@@ -65,6 +72,7 @@ export default function App() {
     setQuota(await checkQuota());
     setPro(await isSubscribed());
     setStreak((await getStreak()).count);
+    setExams(await loadExams());
   }, []);
 
   useEffect(() => {
@@ -247,6 +255,30 @@ export default function App() {
     setScreen('study');
   }, [decks]);
 
+  // Study for one exam: everything due across its decks, or all of its
+  // cards if nothing is due yet - the night before, "nothing due" is not
+  // an answer anyone wants.
+  const openExam = useCallback(
+    (exam) => {
+      const linked = examDecks(exam, decks);
+      if (!linked.length) {
+        setEditingExam(exam);
+        setScreen('exam');
+        return;
+      }
+      const now = Date.now();
+      let cards = linked.flatMap((d) =>
+        d.cards.filter((c) => !c.srs || c.srs.due <= now).map((c) => ({ ...c, deckId: d.id })),
+      );
+      if (!cards.length) cards = linked.flatMap((d) => d.cards.map((c) => ({ ...c, deckId: d.id })));
+      setActiveDeck({ id: `exam_${now}`, title: exam.title, virtual: true, createdAt: now, cards });
+      setScreen('study');
+    },
+    [decks],
+  );
+
+  const nextExam = upcoming(exams).find((e) => e.date >= new Date().toISOString().slice(0, 10)) ?? null;
+
   // The hidden wordmark gesture. Already admin -> offer to turn it off, so
   // the paywall and free tier can be checked on the same phone.
   const adminTap = useCallback(() => {
@@ -323,11 +355,35 @@ export default function App() {
                   appendTo={appendTo}
                   onCancelAppend={() => setAppendTo(null)}
                   onAdminTap={adminTap}
+                  nextExam={nextExam}
                   pageCount={pages.length}
                   onOpenReview={() => setScreen('review')}
                   onCapture={(photo) => addPages([photo])}
                   onOpenSource={() => setSheetOpen(true)}
                   onOpenLibrary={() => setScreen('library')}
+                />
+              </Screen>
+            )}
+
+            {screen === 'exam' && (
+              <Screen preset="modal">
+                <ExamEditorScreen
+                  exam={editingExam}
+                  decks={decks}
+                  onSave={async (exam) => {
+                    setExams(await saveExam(exam));
+                    setEditingExam(null);
+                    setScreen('library');
+                  }}
+                  onDelete={async (id) => {
+                    setExams(await deleteExam(id));
+                    setEditingExam(null);
+                    setScreen('library');
+                  }}
+                  onClose={() => {
+                    setEditingExam(null);
+                    setScreen('library');
+                  }}
                 />
               </Screen>
             )}
@@ -423,6 +479,16 @@ export default function App() {
                   onAddPages={appendToDeck}
                   onCreate={() => setScreen('create')}
                   onSettings={() => setScreen('settings')}
+                  exams={exams}
+                  onAddExam={() => {
+                    setEditingExam(null);
+                    setScreen('exam');
+                  }}
+                  onOpenExam={openExam}
+                  onEditExam={(e) => {
+                    setEditingExam(e);
+                    setScreen('exam');
+                  }}
                   onDelete={async (id) => setDecks(await deleteDeck(id))}
                   onLoadSample={async () => {
                     setDecks(await saveDeck(makeSampleDeck()));

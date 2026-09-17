@@ -45,7 +45,8 @@ src/screens/
   CameraScreen.js          opens straight to camera, no home screen
   GeneratingScreen.js      the 2-4s wait, narrated
   StudyScreen.js           card stack + rating, edit/delete a card
-  LibraryScreen.js         saved decks, streak, review-what's-due
+  LibraryScreen.js         this week (exams), saved decks, streak, due
+  ExamEditorScreen.js      name, date, linked decks
   PaywallScreen.js         three plans
 src/components/
   Flashcard.js             tap to flip, swipe to rate
@@ -155,6 +156,12 @@ just "more of the same". The check lives in `canUseDocuments()` in
 `src/lib/entitlements.js` — one function if you want to change the policy.
 
 ## Studying
+
+- **This week.** Top of the library: exams with a countdown, the decks tied
+  to them, how much is learned and how much is due. Tap one to study
+  everything due for that exam (or all of it, the night before). The nearest
+  exam also sits on the camera screen. Countdown turns amber at 3 days, rose
+  at 1. Long-press to edit; a finished exam lingers a day, crossed off.
 
 - **Four modes, one schedule.** Chips under the deck title switch between
   **Cards** (flip and rate), **Quiz** (multiple choice - the wrong answers are

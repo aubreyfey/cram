@@ -9,16 +9,22 @@ import Animated, {
   withDelay,
   withSpring,
 } from 'react-native-reanimated';
+import ExamCard from '../components/ExamCard';
 import Mascot from '../components/Mascot';
 import PrimaryButton from '../components/PrimaryButton';
 import { deckProgress, dueCount } from '../lib/srs';
+import { upcoming } from '../lib/exams';
 import { shareDeck } from '../lib/share';
 import { colors, motion, radius, space, type } from '../theme';
 import { alert } from '../lib/alert';
 
 export default function LibraryScreen({
   decks,
+  exams = [],
   streak = 0,
+  onAddExam,
+  onOpenExam,
+  onEditExam,
   onOpen,
   onReviewDue,
   onAddPages,
@@ -32,6 +38,7 @@ export default function LibraryScreen({
 }) {
   const insets = useSafeAreaInsets();
   const totalDue = decks.reduce((n, d) => n + dueCount(d.cards), 0);
+  const soon = upcoming(exams);
 
   const confirmDelete = (deck) => {
     alert('Delete deck?', `"${deck.title}" and its cards will be gone.`, [
@@ -77,6 +84,38 @@ export default function LibraryScreen({
             <Text style={styles.close}>Camera</Text>
           </Pressable>
         </View>
+      </View>
+
+      {/* Exams first: this is the part of the app that knows what the
+          week looks like. Empty state is a single quiet line - most people
+          add their first exam after their first deck, not before. */}
+      <View style={styles.week}>
+        <View style={styles.weekHead}>
+          <Text style={styles.weekTitle}>THIS WEEK</Text>
+          {onAddExam ? (
+            <Pressable onPress={onAddExam} hitSlop={12}>
+              <Text style={styles.weekAdd}>+ Exam</Text>
+            </Pressable>
+          ) : null}
+        </View>
+        {soon.length ? (
+          soon.map((e, i) => (
+            <ExamCard
+              key={e.id}
+              exam={e}
+              decks={decks}
+              index={i}
+              onPress={() => onOpenExam(e)}
+              onLongPress={() => onEditExam(e)}
+            />
+          ))
+        ) : (
+          <Pressable onPress={onAddExam} style={styles.weekEmpty}>
+            <Text style={styles.weekEmptyText}>
+              Got an exam coming? Add it and Cram counts down and keeps the right decks in front of you.
+            </Text>
+          </Pressable>
+        )}
       </View>
 
       {/* Only shown with two or more decks - with one, tapping the deck is
@@ -197,6 +236,23 @@ const styles = StyleSheet.create({
   newLink: { ...type.body, fontWeight: '700', color: colors.textDim },
   gear: { fontSize: 20, color: colors.textDim },
   close: { ...type.body, fontWeight: '700', color: colors.accent },
+  week: { paddingHorizontal: space(6), marginTop: space(5) },
+  weekHead: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: space(3),
+  },
+  weekTitle: { ...type.mono, color: colors.textFaint },
+  weekAdd: { ...type.body, fontSize: 14, fontWeight: '700', color: colors.accent },
+  weekEmpty: {
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    borderColor: colors.line,
+    padding: space(4),
+  },
+  weekEmptyText: { ...type.body, fontSize: 14, color: colors.textDim },
   due: {
     flexDirection: 'row',
     alignItems: 'center',

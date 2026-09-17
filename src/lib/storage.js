@@ -139,3 +139,33 @@ export async function saveAllDecks(decks) {
   await AsyncStorage.setItem(DECKS_KEY, JSON.stringify(decks));
   return decks;
 }
+
+// Exams: a name, a date, and the decks that matter for it. This is what
+// turns a pile of decks into "chem final in 3 days, 41 cards due" - the app
+// knowing what the week looks like from the student's side.
+const EXAMS_KEY = 'cram.exams.v1';
+
+export async function loadExams() {
+  try {
+    const raw = await AsyncStorage.getItem(EXAMS_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+export async function saveExam(exam) {
+  const exams = await loadExams();
+  const next = [exam, ...exams.filter((e) => e.id !== exam.id)].sort((a, b) =>
+    a.date < b.date ? -1 : a.date > b.date ? 1 : 0,
+  );
+  await AsyncStorage.setItem(EXAMS_KEY, JSON.stringify(next));
+  return next;
+}
+
+export async function deleteExam(id) {
+  const exams = await loadExams();
+  const next = exams.filter((e) => e.id !== id);
+  await AsyncStorage.setItem(EXAMS_KEY, JSON.stringify(next));
+  return next;
+}

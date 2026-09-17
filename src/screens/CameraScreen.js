@@ -10,6 +10,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 import PrimaryButton from '../components/PrimaryButton';
+import { countdown, daysUntil } from '../lib/exams';
 import { colors, motion, radius, space, type } from '../theme';
 
 export default function CameraScreen({
@@ -22,6 +23,7 @@ export default function CameraScreen({
   onAdminTap,
   pageCount = 0,
   onOpenReview,
+  nextExam,
 }) {
   const [permission, requestPermission] = useCameraPermissions();
   const [busy, setBusy] = useState(false);
@@ -135,6 +137,20 @@ export default function CameraScreen({
         )}
       </View>
 
+      {/* The nearest exam, so the countdown is there every time the camera
+          opens - it's the reason to scan today rather than tomorrow. */}
+      {nextExam && !appendTo ? (
+        <Pressable onPress={onOpenLibrary} style={[styles.examPill, { top: insets.top + space(14) }]} hitSlop={8}>
+          <Text style={styles.examText} numberOfLines={1}>
+            <Text style={{ color: colors.text }}>{nextExam.title.toUpperCase()}</Text>
+            {'  ·  '}
+            <Text style={{ color: daysUntil(nextExam.date) <= 1 ? colors.again : daysUntil(nextExam.date) <= 3 ? colors.hard : colors.accent }}>
+              {countdown(nextExam.date).toUpperCase()}
+            </Text>
+          </Text>
+        </Pressable>
+      ) : null}
+
       {/* Append mode. The banner is the only thing that says the next scan
           goes into an existing deck, so it has to be impossible to miss and
           one tap to get out of. */}
@@ -244,6 +260,16 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.45)',
   },
   proPill: { backgroundColor: colors.accent },
+  examPill: {
+    position: 'absolute',
+    alignSelf: 'center',
+    maxWidth: '84%',
+    paddingHorizontal: space(4),
+    paddingVertical: space(2.5),
+    borderRadius: radius.pill,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+  },
+  examText: { ...type.mono, color: colors.textDim },
   appendBar: {
     position: 'absolute',
     alignSelf: 'center',
