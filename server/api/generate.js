@@ -5,7 +5,11 @@ import { isAdminCode } from './admin.js';
 
 const client = new Anthropic();
 
+// Two models, by tier. Free users are the cost exposure - they pay nothing
+// and a free scan on Opus costs 5x what it does on Haiku. Subscribers (and
+// admins) get the best model because that is what they are paying for.
 const MODEL = process.env.CRAM_MODEL || 'claude-opus-5';
+const MODEL_FREE = process.env.CRAM_MODEL_FREE || 'claude-haiku-4-5-20251001';
 
 const ACCEPTED = {
   'image/jpeg': { kind: 'image', maxBytes: 6 * 1024 * 1024 },
@@ -88,6 +92,11 @@ export default async function handler(req, res) {
   // Admins (the people who run this thing) skip the per-IP limit - testing a
   // build means firing off a dozen scans in a minute.
   const admin = isAdminCode(req.headers['x-cram-admin']);
+  // The tier header is a cost switch, not a security boundary: a free user
+  // who forges "pro" gets a better model for their 10 cards a day, nothing
+  // more. Real enforcement is receipt verification - see README, Security.
+  const paid = admin || req.headers['x-cram-tier'] === 'pro';
+  const model = paid ? MODEL : MODEL_FREE;
   const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || 'unknown';
   if (!admin && rateLimited(ip)) {
     return res.status(429).json({ error: 'rate_limited' });
@@ -134,7 +143,7 @@ export default async function handler(req, res) {
 
   try {
     const response = await client.messages.parse({
-      model: MODEL,
+      model,
       // A long PDF or a stack of photos can legitimately produce a hundred
       // cards, and 120 cards is ~10k output tokens. Stay under ~21k: above
       // that the SDK refuses non-streaming requests outright.

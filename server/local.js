@@ -86,7 +86,7 @@ const server = http.createServer(async (req, res) => {
   // The browser preview runs on :8081 and this on :3000, so it is a
   // cross-origin request and needs CORS. Wide open is fine for localhost.
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, x-cram-key, x-cram-admin');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, x-cram-key, x-cram-admin, x-cram-tier');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
 
   if (req.method === 'OPTIONS') {
@@ -115,7 +115,8 @@ const server = http.createServer(async (req, res) => {
     console.error('handler threw:', e);
     if (!res.headersSent) res.status(500).json({ error: 'internal_error' });
   }
-  console.log(`${req.method} ${req.url} -> ${res.statusCode} (${Date.now() - started}ms)`);
+  const tier = req.headers['x-cram-admin'] ? 'admin' : req.headers['x-cram-tier'] || 'free';
+  console.log(`${req.method} ${req.url} [${tier}] -> ${res.statusCode} (${Date.now() - started}ms)`);
 });
 
 server.listen(PORT, () => {

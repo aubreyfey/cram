@@ -21,7 +21,8 @@ Set these in the Vercel dashboard (Settings -> Environment Variables):
 |---|---|
 | `ANTHROPIC_API_KEY` | from console.anthropic.com |
 | `CRAM_APP_KEY` | any long random string; must match `extra.appKey` in `app.json` |
-| `CRAM_MODEL` | `claude-opus-5` (see cost note below) |
+| `CRAM_MODEL` | `claude-opus-5` — for subscribers and admins (see cost note below) |
+| `CRAM_MODEL_FREE` | `claude-haiku-4-5-20251001` — for free-tier scans |
 | `CRAM_ADMIN_KEY` | any long random string; the code you type into the app to turn on admin mode |
 
 `CRAM_ADMIN_KEY` is checked by `POST /api/admin` and, as the `x-cram-admin`
@@ -73,21 +74,26 @@ a subscriber scanning 20 pages a week costs about $1.10 — a healthy margin. A
 heavy user at 60 scans a week costs $3.30 and is close to break-even.
 
 **The free tier is the real exposure.** 10 free cards/day is roughly one scan a
-day, so a free user who never converts costs about **$1.65/month**. A few
-thousand of those and the bill is the biggest line in the business.
+day, so a free user who never converts would cost about **$1.65/month** on
+Opus. A few thousand of those and the bill is the biggest line in the business.
 
-Three levers, in the order you should pull them:
+So the model is picked **per tier**. The app sends `x-cram-tier: free|pro`;
+subscribers and admins get `CRAM_MODEL`, everyone else gets `CRAM_MODEL_FREE`:
 
-1. **Drop the free tier to 5 cards/day.** Costs nothing, halves the exposure.
-2. **Switch `CRAM_MODEL` to `claude-sonnet-5`** ($2/$10) — about $0.022/scan,
-   2.5x cheaper. Check card quality on a dozen real pages first, especially
-   messy handwriting.
-3. **`claude-haiku-4-5`** ($1/$5) — about $0.011/scan. Cheapest, and the one
-   most likely to cost you quality on hard pages.
+| Variable | Default | Cost per scan |
+|---|---|---|
+| `CRAM_MODEL` (paid + admin) | `claude-opus-5` | ~$0.055 |
+| `CRAM_MODEL_FREE` | `claude-haiku-4-5-20251001` | ~$0.011 |
 
-It is one environment variable, so you can A/B it after launch rather than
-guessing now. Watch spend at console.anthropic.com and set a billing alert
-**before** you post the launch video, not after.
+That puts a free user at about **$0.33/month** — and the free user who writes
+or pastes their own cards costs nothing at all. The tier header is a cost
+switch, not a security boundary: forging it gets a better model for the same
+10 cards a day. Real enforcement is receipt verification (below).
+
+Other levers, if you still need them: drop the free tier to 5 cards/day, or
+set `CRAM_MODEL_FREE=claude-sonnet-5` (~$0.022) if Haiku's cards on messy
+handwriting are not good enough. Watch spend at console.anthropic.com and set
+a billing alert **before** you post the launch video, not after.
 
 ## Security — read this before you scale
 

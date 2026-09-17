@@ -63,7 +63,7 @@ async function preparePdf(uri, size) {
  *   { kind: 'images', pages: [{ uri }], name? }   one or many photos, in order
  *   { kind: 'image',  uri }                       shorthand for one page
  */
-export async function generateDeck(source, { signal } = {}) {
+export async function generateDeck(source, { signal, tier = 'free' } = {}) {
   let body;
   if (source.kind === 'pdf') {
     body = await preparePdf(source.uri, source.size);
@@ -90,6 +90,7 @@ export async function generateDeck(source, { signal } = {}) {
       headers: {
         'Content-Type': 'application/json',
         'x-cram-key': Constants.expoConfig?.extra?.appKey ?? '',
+        'x-cram-tier': tier,
         ...(admin ? { 'x-cram-admin': admin } : {}),
       },
       body: JSON.stringify(body),

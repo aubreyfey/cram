@@ -73,7 +73,12 @@ export default function App() {
       abortRef.current = controller;
 
       try {
-        const fresh = await generateDeck(src, { signal: controller.signal });
+        // The tier picks the model server-side: subscribers get the best one,
+        // free users get the cheap one. Admin is resolved on the server.
+        const fresh = await generateDeck(src, {
+          signal: controller.signal,
+          tier: (await isSubscribed()) ? 'pro' : 'free',
+        });
         if (controller.signal.aborted) return;
 
         // Appending keeps the original deck's title and schedule; the new
