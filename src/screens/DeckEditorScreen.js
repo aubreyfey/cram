@@ -13,6 +13,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { FadeInDown, FadeOut } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
+import Mascot from '../components/Mascot';
 import PrimaryButton from '../components/PrimaryButton';
 import { makeManualDeck, parseCards } from '../lib/parseCards';
 import { colors, radius, space, type } from '../theme';
@@ -118,7 +119,15 @@ export default function DeckEditorScreen({ onSave, onClose, initialText = '' }) 
 
         {pasteOpen ? (
           <Animated.View entering={FadeInDown.duration(220)} style={styles.pasteBox}>
-            <Text style={styles.label}>PASTE NOTES OR A SHARED DECK</Text>
+            <View style={styles.pasteHead}>
+              <Text style={styles.label}>PASTE NOTES OR A SHARED DECK</Text>
+              {/* Pip reads along: puzzled while there is text but no cards
+                  yet, pleased once the parser finds some. */}
+              <Mascot
+                mood={!pasteText.trim() ? 'idle' : parsed.length ? 'happy' : 'thinking'}
+                size={36}
+              />
+            </View>
             <TextInput
               style={styles.pasteInput}
               value={pasteText}
@@ -213,6 +222,12 @@ const styles = StyleSheet.create({
     marginBottom: space(3),
   },
   label: { ...type.mono, color: colors.textFaint, marginBottom: space(2) },
+  pasteHead: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-end',
+    marginBottom: space(1),
+  },
   pasteBox: {
     backgroundColor: colors.surface,
     borderRadius: radius.lg,

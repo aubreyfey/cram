@@ -1,12 +1,19 @@
 import React from 'react';
 import { Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import Animated, {
+  FadeInDown,
+  ZoomIn,
+  useAnimatedStyle,
+  useSharedValue,
+  withDelay,
+  withSpring,
+} from 'react-native-reanimated';
 import Mascot from '../components/Mascot';
 import PrimaryButton from '../components/PrimaryButton';
 import { deckProgress, dueCount } from '../lib/srs';
 import { shareDeck } from '../lib/share';
-import { colors, radius, space, type } from '../theme';
+import { colors, motion, radius, space, type } from '../theme';
 
 export default function LibraryScreen({
   decks,
@@ -48,9 +55,9 @@ export default function LibraryScreen({
         <View style={styles.titleRow}>
           <Text style={styles.title}>Your decks</Text>
           {streak > 1 ? (
-            <View style={styles.streak}>
+            <Animated.View entering={ZoomIn.springify().damping(12).delay(200)} style={styles.streak}>
               <Text style={styles.streakText}>{streak}-DAY STREAK</Text>
-            </View>
+            </Animated.View>
           ) : null}
         </View>
         <View style={styles.headerActions}>
@@ -136,7 +143,7 @@ export default function LibraryScreen({
                 </View>
                 {item.subject ? <Text style={styles.subject}>{item.subject}</Text> : null}
                 <View style={styles.track}>
-                  <View style={[styles.fill, { width: `${pct}%` }]} />
+                  <ProgressFill pct={pct} delay={index * 45 + 200} />
                 </View>
                 <Text style={styles.meta}>
                   {item.cards.length} cards
@@ -149,6 +156,17 @@ export default function LibraryScreen({
       />
     </View>
   );
+}
+
+// Grows from zero when the list appears. Progress you watch fill up reads as
+// progress; a bar that is simply there reads as decoration.
+function ProgressFill({ pct, delay }) {
+  const w = useSharedValue(0);
+  React.useEffect(() => {
+    w.value = withDelay(delay, withSpring(pct, motion.soft));
+  }, [pct]);
+  const style = useAnimatedStyle(() => ({ width: `${w.value}%` }));
+  return <Animated.View style={[styles.fill, style]} />;
 }
 
 const styles = StyleSheet.create({

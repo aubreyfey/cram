@@ -21,6 +21,7 @@ import { colors, motion } from '../theme';
 //   idle     - gentle bob, blinks now and then. Empty states, quiet moments.
 //   thinking - eyes dart, slight lean. While the page is being read.
 //   happy    - bounce, squinty eyes, big grin. Deck finished.
+//   oops     - quick head-shake, small frown. A card rated Again.
 
 export default function Mascot({ mood = 'idle', size = 72, style }) {
   const reduce = useReducedMotion();
@@ -31,6 +32,7 @@ export default function Mascot({ mood = 'idle', size = 72, style }) {
   const tilt = useSharedValue(0);
   const pop = useSharedValue(1);
   const jump = useSharedValue(0);
+  const squint = useSharedValue(1);
 
   useEffect(() => {
     if (reduce) return;
@@ -82,8 +84,22 @@ export default function Mascot({ mood = 'idle', size = 72, style }) {
         withTiming(-22, { duration: 220, easing: Easing.out(Easing.quad) }),
         withSpring(0, { damping: 9, stiffness: 320, mass: 0.6 }),
       );
+    } else if (mood === 'oops') {
+      look.value = withTiming(0, { duration: 150 });
+      squint.value = withSequence(
+        withTiming(0.55, { duration: 120 }),
+        withDelay(600, withTiming(1, { duration: 200 })),
+      );
+      tilt.value = withSequence(
+        withTiming(-10, { duration: 90 }),
+        withTiming(10, { duration: 120 }),
+        withTiming(-6, { duration: 110 }),
+        withSpring(0, motion.snap),
+      );
+      jump.value = withSequence(withTiming(5, { duration: 100 }), withSpring(0, motion.soft));
     } else {
       look.value = withTiming(0, { duration: 250 });
+      squint.value = withTiming(1, { duration: 200 });
       tilt.value = withSpring(0, motion.soft);
     }
   }, [mood, reduce]);
@@ -97,12 +113,13 @@ export default function Mascot({ mood = 'idle', size = 72, style }) {
   }));
 
   const eyeStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: look.value }, { scaleY: blink.value }],
+    transform: [{ translateX: look.value }, { scaleY: blink.value * squint.value }],
   }));
 
   const s = size / 72;
   const happy = mood === 'happy';
   const thinking = mood === 'thinking';
+  const oops = mood === 'oops';
 
   return (
     <Animated.View style={[{ width: 72 * s, height: 88 * s }, style, bodyStyle]}>
@@ -160,6 +177,20 @@ export default function Mascot({ mood = 'idle', size = 72, style }) {
                 { width: 7 * s, height: 7 * s, borderRadius: 4 * s, marginTop: 9 * s },
               ]}
             />
+          ) : oops ? (
+            <View
+              style={[
+                styles.mouthSad,
+                {
+                  width: 14 * s,
+                  height: 7 * s,
+                  borderTopWidth: 3 * s,
+                  borderTopLeftRadius: 7 * s,
+                  borderTopRightRadius: 7 * s,
+                  marginTop: 11 * s,
+                },
+              ]}
+            />
           ) : (
             <View
               style={[
@@ -196,4 +227,5 @@ const styles = StyleSheet.create({
   mouth: { backgroundColor: colors.accentInk },
   mouthO: { borderWidth: 2.5, borderColor: colors.accentInk, backgroundColor: 'transparent' },
   mouthHappy: { backgroundColor: colors.accentInk },
+  mouthSad: { borderColor: colors.accentInk, backgroundColor: 'transparent' },
 });

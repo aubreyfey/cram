@@ -47,6 +47,17 @@ export default function StudyScreen({ deck, onClose, onUpdateDeck, onAddPages, i
   const [timedOut, setTimedOut] = useState(false);
   const topCardRef = useRef(null);
 
+  // Pip sits by the title and reacts to each rating, then settles. Short,
+  // so a fast run through a deck doesn't turn into a puppet show.
+  const [reaction, setReaction] = useState('idle');
+  const reactionTimer = useRef(null);
+  useEffect(() => () => clearTimeout(reactionTimer.current), []);
+  const react = (rating) => {
+    clearTimeout(reactionTimer.current);
+    setReaction(rating === RATING.AGAIN ? 'oops' : 'happy');
+    reactionTimer.current = setTimeout(() => setReaction('idle'), 900);
+  };
+
   const progress = useSharedValue(0);
   const progressStyle = useAnimatedStyle(() => ({ width: `${progress.value * 100}%` }));
 
@@ -91,6 +102,7 @@ export default function StudyScreen({ deck, onClose, onUpdateDeck, onAddPages, i
     );
 
     setRatings((r) => ({ ...r, [rating]: (r[rating] || 0) + 1 }));
+    react(rating);
     const next = index + 1;
     progress.value = withSpring(next / queue.length, motion.soft);
     setIndex(next);
@@ -173,9 +185,12 @@ export default function StudyScreen({ deck, onClose, onUpdateDeck, onAddPages, i
         </Pressable>
       </View>
 
-      <Text style={styles.deckTitle} numberOfLines={1}>
-        {deck.title}
-      </Text>
+      <View style={styles.titleRow}>
+        <Text style={[styles.deckTitle, { flex: 1 }]} numberOfLines={1}>
+          {deck.title}
+        </Text>
+        <Mascot mood={reaction} size={40} />
+      </View>
 
       <View style={styles.track}>
         <Animated.View style={[styles.fill, progressStyle]} />
@@ -185,14 +200,7 @@ export default function StudyScreen({ deck, onClose, onUpdateDeck, onAddPages, i
         {MODES.map((m) => {
           const active = m.key === mode;
           return (
-            <Pressable
-              key={m.key}
-              onPress={() => setMode(m.key)}
-              style={[styles.modeChip, active && styles.modeChipActive]}
-              hitSlop={6}
-            >
-              <Text style={[styles.modeText, active && styles.modeTextActive]}>{m.label}</Text>
-            </Pressable>
+            <ModeChip key={m.key} label={m.label} active={active} onPress={() => setMode(m.key)} />
           );
         })}
         {mode === 'blitz' ? (
@@ -250,6 +258,30 @@ export default function StudyScreen({ deck, onClose, onUpdateDeck, onAddPages, i
   );
 }
 
+// A chip that squashes on press and springs back - same pop as the shutter,
+// so the whole app feels like one material.
+function ModeChip({ label, active, onPress }) {
+  const scale = useSharedValue(1);
+  const animated = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
+  return (
+    <Animated.View style={animated}>
+      <Pressable
+        onPressIn={() => {
+          scale.value = withSpring(0.9, motion.pop);
+        }}
+        onPressOut={() => {
+          scale.value = withSpring(1, motion.pop);
+        }}
+        onPress={onPress}
+        style={[styles.modeChip, active && styles.modeChipActive]}
+        hitSlop={6}
+      >
+        <Text style={[styles.modeText, active && styles.modeTextActive]}>{label}</Text>
+      </Pressable>
+    </Animated.View>
+  );
+}
+
 function RateButton({ label, color, onPress }) {
   return (
     <Pressable onPress={onPress} style={[styles.rateButton, { borderColor: color + '55' }]}>
@@ -270,12 +302,17 @@ const styles = StyleSheet.create({
   close: { ...type.body, fontWeight: '700', color: colors.textDim },
   edit: { ...type.body, fontWeight: '700', color: colors.accent },
   counter: { ...type.mono, color: colors.textDim },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space(3),
+    paddingHorizontal: space(6),
+    marginTop: space(2),
+  },
   deckTitle: {
     ...type.title,
     fontSize: 22,
     color: colors.text,
-    paddingHorizontal: space(6),
-    marginTop: space(3),
   },
   track: {
     height: 3,
