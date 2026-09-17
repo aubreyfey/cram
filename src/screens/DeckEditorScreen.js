@@ -121,7 +121,7 @@ export default function DeckEditorScreen({ onSave, onClose, initialText = '' }) 
           <Animated.View entering={FadeInDown.duration(220)} style={styles.pasteBox}>
             <View style={styles.pasteHead}>
               <Text style={styles.label}>PASTE NOTES OR A SHARED DECK</Text>
-              {/* Pip reads along: puzzled while there is text but no cards
+              {/* Volt reads along: puzzled while there is text but no cards
                   yet, pleased once the parser finds some. */}
               <Mascot
                 mood={!pasteText.trim() ? 'idle' : parsed.length ? 'happy' : 'thinking'}

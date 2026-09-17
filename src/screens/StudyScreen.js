@@ -47,7 +47,7 @@ export default function StudyScreen({ deck, onClose, onUpdateDeck, onAddPages, i
   const [timedOut, setTimedOut] = useState(false);
   const topCardRef = useRef(null);
 
-  // Pip sits by the title and reacts to each rating, then settles. Short,
+  // Volt sits by the title and reacts to each rating, then settles. Short,
   // so a fast run through a deck doesn't turn into a puppet show.
   const [reaction, setReaction] = useState('idle');
   const reactionTimer = useRef(null);
