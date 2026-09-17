@@ -16,6 +16,7 @@ import PaywallScreen from './src/screens/PaywallScreen';
 import ReviewScreen from './src/screens/ReviewScreen';
 import DeckEditorScreen from './src/screens/DeckEditorScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
+import FeedbackScreen from './src/screens/FeedbackScreen';
 
 import { MAX_PAGES, generateDeck } from './src/lib/api';
 import { pickDocument, pickFromLibrary } from './src/lib/pickers';
@@ -331,12 +332,23 @@ export default function App() {
               </Screen>
             )}
 
+            {screen === 'feedback' && (
+              <Screen preset="modal">
+                <FeedbackScreen
+                  tier={quota.admin ? 'admin' : pro ? 'pro' : 'free'}
+                  deckCount={decks.length}
+                  onClose={() => setScreen(activeDeck ? 'study' : 'library')}
+                />
+              </Screen>
+            )}
+
             {screen === 'settings' && (
               <Screen preset="push">
                 <SettingsScreen
                   tier={quota.admin ? 'admin' : pro ? 'pro' : 'free'}
                   deckCount={decks.length}
                   onImport={importDecks}
+                  onFeedback={() => setScreen('feedback')}
                   onClose={() => setScreen('library')}
                 />
               </Screen>
@@ -344,7 +356,11 @@ export default function App() {
 
             {screen === 'create' && (
               <Screen preset="modal">
-                <DeckEditorScreen onSave={saveManualDeck} onClose={() => setScreen('camera')} />
+                <DeckEditorScreen
+                  onSave={saveManualDeck}
+                  onGenerate={(text, name) => start({ kind: 'text', text, name })}
+                  onClose={() => setScreen('camera')}
+                />
               </Screen>
             )}
 
@@ -387,6 +403,7 @@ export default function App() {
                   deck={activeDeck}
                   onUpdateDeck={updateDeck}
                   onAddPages={appendToDeck}
+                  onFeedback={() => setScreen('feedback')}
                   onClose={backToCamera}
                 />
               </Screen>

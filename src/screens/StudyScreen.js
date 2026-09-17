@@ -30,7 +30,7 @@ const MODES = [
 ];
 const BLITZ_SECONDS = 60;
 
-export default function StudyScreen({ deck, onClose, onUpdateDeck, onAddPages, initialMode = 'cards' }) {
+export default function StudyScreen({ deck, onClose, onUpdateDeck, onAddPages, onFeedback, initialMode = 'cards' }) {
   // The queue is a list of ids fixed at the start of the session; the cards
   // themselves are looked up live so an edit shows on the card in front of
   // you and a deleted card simply drops out of the run.
@@ -162,6 +162,11 @@ export default function StudyScreen({ deck, onClose, onUpdateDeck, onAddPages, i
               <Text style={styles.afterLink}>Share deck</Text>
             </Pressable>
           </View>
+          {onFeedback ? (
+            <Pressable onPress={onFeedback} hitSlop={8} style={{ marginTop: space(5) }}>
+              <Text style={styles.feedbackLink}>What's missing?</Text>
+            </Pressable>
+          ) : null}
         </Animated.View>
       </View>
     );
@@ -370,6 +375,7 @@ const styles = StyleSheet.create({
   },
   afterRow: { flexDirection: 'row', gap: space(8), marginTop: space(6) },
   afterLink: { ...type.body, fontWeight: '700', color: colors.textDim },
+  feedbackLink: { ...type.mono, color: colors.textFaint },
 });
 
 // Ticks the score up from 0 over ~600ms. Plain state rather than a worklet

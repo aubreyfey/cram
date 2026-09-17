@@ -23,7 +23,7 @@ import { alert } from '../lib/alert';
 // scans, five paste - that is how a deck spreads through a class.
 const blank = () => ({ key: String(Math.random()), front: '', back: '' });
 
-export default function DeckEditorScreen({ onSave, onClose, initialText = '' }) {
+export default function DeckEditorScreen({ onSave, onClose, onGenerate, initialText = '' }) {
   const insets = useSafeAreaInsets();
   const [title, setTitle] = useState('');
   const [rows, setRows] = useState([blank(), blank(), blank()]);
@@ -141,6 +141,16 @@ export default function DeckEditorScreen({ onSave, onClose, initialText = '' }) 
               placeholder={'What is osmosis?\nWater moving across a membrane\n\nWhat is ATP?\nEnergy currency of the cell'}
               placeholderTextColor={colors.textFaint}
             />
+            {/* The AI path: hand the notes to the model and let it write the
+                questions. Same quota and paywall as a scan, a tenth of the
+                cost. Offered whenever there is enough text to be worth it. */}
+            {onGenerate && pasteText.trim().length >= 40 ? (
+              <PrimaryButton
+                label="Write the questions for me"
+                onPress={() => onGenerate(pasteText.trim(), title.trim() || null)}
+                style={styles.aiButton}
+              />
+            ) : null}
             <View style={styles.pasteRow}>
               <Text style={styles.found}>
                 {pasteText.trim()
@@ -149,7 +159,7 @@ export default function DeckEditorScreen({ onSave, onClose, initialText = '' }) 
                     : fallback.length
                       ? `No pairs found - add ${fallback.length} as questions and type the answers`
                       : 'No cards yet'
-                  : 'Question, then answer on the next line. Or "term - definition".'}
+                  : 'Question, then answer on the next line - or paste any notes and let the AI write them.'}
               </Text>
               <PrimaryButton
                 label={toAdd.length ? `Add ${toAdd.length}` : 'Add'}
@@ -253,6 +263,7 @@ const styles = StyleSheet.create({
     textAlignVertical: 'top',
   },
   pasteRow: { flexDirection: 'row', alignItems: 'center', gap: space(3), marginTop: space(3) },
+  aiButton: { height: 48, marginTop: space(3) },
   found: { ...type.body, fontSize: 13, color: colors.textDim, flex: 1 },
   pasteButton: { height: 44, paddingHorizontal: space(5) },
   card: {

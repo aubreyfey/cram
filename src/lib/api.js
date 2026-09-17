@@ -18,6 +18,7 @@ function resolveBaseUrl() {
 }
 
 const BASE_URL = resolveBaseUrl();
+export const API_BASE_URL = BASE_URL;
 
 // Photos per deck. Matches the server; more than this and the upload takes
 // longer than the generation.
@@ -62,10 +63,13 @@ async function preparePdf(uri, size) {
  *   { kind: 'pdf',    uri, size?, name? }
  *   { kind: 'images', pages: [{ uri }], name? }   one or many photos, in order
  *   { kind: 'image',  uri }                       shorthand for one page
+ *   { kind: 'text',   text, name? }               pasted notes
  */
 export async function generateDeck(source, { signal, tier = 'free' } = {}) {
   let body;
-  if (source.kind === 'pdf') {
+  if (source.kind === 'text') {
+    body = { text: source.text };
+  } else if (source.kind === 'pdf') {
     body = await preparePdf(source.uri, source.size);
   } else {
     const pages = source.pages ?? [{ uri: source.uri }];
@@ -128,7 +132,9 @@ export async function generateDeck(source, { signal, tier = 'free' } = {}) {
     throw new ApiError(
       source.kind === 'pdf'
         ? "Couldn't read that PDF. Is it a scan of a scan?"
-        : "That page didn't scan. Try better light.",
+        : source.kind === 'text'
+          ? "Couldn't make cards from that. Try a longer passage."
+          : "That page didn't scan. Try better light.",
       'server',
     );
   }

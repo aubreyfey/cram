@@ -23,7 +23,7 @@ const VERSION = Constants.expoConfig?.version ?? '';
 
 // The one screen that is allowed to be boring. Everything here is something
 // a person does once - turn on the reminder, back up, restore a purchase.
-export default function SettingsScreen({ onClose, onImport, tier, deckCount }) {
+export default function SettingsScreen({ onClose, onImport, onFeedback, tier, deckCount }) {
   const insets = useSafeAreaInsets();
   const [reminder, setRem] = useState({ enabled: false, hour: 20, minute: 0, nag: true });
   const [testArmed, setTestArmed] = useState(false);
@@ -173,6 +173,14 @@ export default function SettingsScreen({ onClose, onImport, tier, deckCount }) {
           <Row
             label="Restore purchases"
             onPress={() => restore().catch((e) => alert('Restore', e.message))}
+          />
+        </Section>
+
+        <Section title="HELP US">
+          <Row
+            label="What should Cram do next?"
+            sub="Missing something? Tell us. It gets read."
+            onPress={onFeedback}
           />
         </Section>
 

@@ -62,7 +62,8 @@
       "apiBaseUrl": "http://localhost:3000",
       "appKey": "change-me",
       "unlockAll": false,
-      "siteUrl": "https://cram.vercel.app"
+      "siteUrl": "https://cram.vercel.app",
+      "feedbackEmail": ""
     },
     "web": {
       "favicon": "./assets/favicon.png"

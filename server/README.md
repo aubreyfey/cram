@@ -1,7 +1,9 @@
 # Cram API
 
-One endpoint. Takes a base64 JPEG of a page, a PDF, or up to 20 JPEGs as
-`{ pages: [{ data, mediaType }, ...] }`, and returns flashcards.
+Three endpoints. `/api/generate` takes a base64 JPEG of a page, a PDF, up to
+20 JPEGs as `{ pages: [...] }`, or pasted notes as `{ text }`, and returns
+flashcards. `/api/admin` checks the admin code. `/api/feedback` takes in-app
+feedback.
 
 The Anthropic API key lives here and **never** ships inside the app. That is the
 only reason this server exists.
@@ -23,6 +25,8 @@ Set these in the Vercel dashboard (Settings -> Environment Variables):
 | `CRAM_APP_KEY` | any long random string; must match `extra.appKey` in `app.json` |
 | `CRAM_MODEL` | `claude-opus-5` — for subscribers and admins (see cost note below) |
 | `CRAM_MODEL_FREE` | `claude-haiku-4-5-20251001` — for free-tier scans |
+| `FEEDBACK_GITHUB_TOKEN` | optional; a fine-grained token with Issues: write on the repo below |
+| `FEEDBACK_GITHUB_REPO` | optional; `owner/name` — in-app feedback lands there as issues. Use a **private** repo; people type their email in. Unset = feedback goes to the function logs. |
 | `CRAM_ADMIN_KEY` | any long random string; the code you type into the app to turn on admin mode |
 
 `CRAM_ADMIN_KEY` is checked by `POST /api/admin` and, as the `x-cram-admin`

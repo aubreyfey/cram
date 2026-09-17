@@ -28,11 +28,12 @@ const PDF_STEPS = [
 
 export default function GeneratingScreen({ source, error, onRetry, onCancel, onUseSample }) {
   const isPdf = source?.kind === 'pdf';
+  const isText = source?.kind === 'text';
   const pageCount = source?.pages?.length ?? 1;
   // A stack of photos takes as long as a PDF, so it gets the slower narration.
   const slow = isPdf || pageCount > 1;
   const STEPS = slow ? PDF_STEPS : IMAGE_STEPS;
-  const photoUri = isPdf ? null : (source?.pages?.[0]?.uri ?? source?.uri);
+  const photoUri = isPdf || isText ? null : (source?.pages?.[0]?.uri ?? source?.uri);
   const [step, setStep] = useState(0);
   const [frameH, setFrameH] = useState(0);
   const insets = useSafeAreaInsets();
@@ -88,6 +89,15 @@ export default function GeneratingScreen({ source, error, onRetry, onCancel, onU
             <Text style={styles.docGlyph}>▤</Text>
             <Text style={styles.docName} numberOfLines={2}>
               {source?.name || 'Document'}
+            </Text>
+          </View>
+        ) : null}
+        {isText ? (
+          // Pasted notes: show the opening lines, so it's clearly the right text.
+          <View style={styles.docStand}>
+            <Text style={styles.docGlyph}>✎</Text>
+            <Text style={styles.docName} numberOfLines={6}>
+              {source?.text}
             </Text>
           </View>
         ) : null}

@@ -187,6 +187,13 @@ just "more of the same". The check lives in `canUseDocuments()` in
   are all recognised, with a live "N cards found" count. Costs nothing per
   user and is never gated, which is the point: one student scans, the rest
   of the study group pastes.
+- **Paste notes, let the AI write the questions.** In the paste box, once
+  there is a paragraph or more, "Write the questions for me" sends the text to
+  the model. Same quota and paywall as a scan; about a tenth of the cost.
+- **Feedback.** Settings → "What should Cram do next?", and a quiet link on
+  the deck-finished screen. Goes to `/api/feedback` (GitHub issues if
+  configured, server logs otherwise); with no server it falls back to email
+  via `extra.feedbackEmail` in app.json - set that before launch.
 - **Review before you send.** Every photo - shutter or library - lands on a
   review grid first. Shoot a whole lecture slide by slide, pick ten
   screenshots at once from Photos, drop a blurry one, then make one deck from
