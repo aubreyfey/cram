@@ -34,9 +34,9 @@ const OPTIONS = [
     key: 'files',
     glyph: '􀈹',
     fallback: '▤',
-    title: 'PDF or document',
+    title: 'PDF or file',
     pro: true,
-    subtitle: 'Lecture slides, a chapter, a past paper',
+    subtitle: 'Lecture slides, a chapter, or a deck someone sent you',
   },
   {
     key: 'write',

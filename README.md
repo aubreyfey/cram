@@ -160,6 +160,13 @@ just "more of the same". The check lives in `canUseDocuments()` in
   rates the same cards into the same SM-2 schedule.
 - **Swipe or tap to rate.** Again / Hard / Got it feed a trimmed SM-2; a card
   you know comes back in 1, 3, then ~8 days.
+- **Daily reminder.** Settings (gear in the library) → pick a time. A local
+  notification, nothing leaves the phone. Not available on web.
+- **Backup and restore.** Settings → Export all decks writes one JSON file
+  you can keep in Files, iCloud Drive or an email. Import merges it back and
+  never rolls progress back. Share deck → "As a file" uses the same format,
+  so a friend's copy arrives with hints and scheduling intact; they open it
+  via Import → PDF or file. Free, no account needed.
 - **Dev builds** get a "use sample cards instead" link on the request-failed
   screen, so the whole app can be exercised on a machine with no API key.
 - **Edit** in the study header fixes the card in front of you, or deletes it.

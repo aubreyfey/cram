@@ -133,3 +133,9 @@ export async function setAdminCode(code) {
   if (code) await AsyncStorage.setItem(ADMIN_KEY, code);
   else await AsyncStorage.removeItem(ADMIN_KEY);
 }
+
+// Whole-library write, for restoring a backup after merging.
+export async function saveAllDecks(decks) {
+  await AsyncStorage.setItem(DECKS_KEY, JSON.stringify(decks));
+  return decks;
+}

@@ -22,6 +22,7 @@ export default function LibraryScreen({
   onReviewDue,
   onAddPages,
   onCreate,
+  onSettings,
   onClose,
   onDelete,
   isPro,
@@ -61,6 +62,11 @@ export default function LibraryScreen({
           ) : null}
         </View>
         <View style={styles.headerActions}>
+          {onSettings ? (
+            <Pressable onPress={onSettings} hitSlop={16}>
+              <Text style={styles.gear}>⚙</Text>
+            </Pressable>
+          ) : null}
           {onCreate ? (
             <Pressable onPress={onCreate} hitSlop={16}>
               <Text style={styles.newLink}>New</Text>
@@ -188,6 +194,7 @@ const styles = StyleSheet.create({
   streakText: { ...type.mono, fontSize: 10, color: colors.accentInk },
   headerActions: { flexDirection: 'row', alignItems: 'center', gap: space(5) },
   newLink: { ...type.body, fontWeight: '700', color: colors.textDim },
+  gear: { fontSize: 20, color: colors.textDim },
   close: { ...type.body, fontWeight: '700', color: colors.accent },
   due: {
     flexDirection: 'row',

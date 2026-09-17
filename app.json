@@ -45,7 +45,14 @@
           "photosPermission": "Import a screenshot or photo of your notes to turn it into flashcards."
         }
       ],
-      "expo-document-picker"
+      "expo-document-picker",
+      "expo-sharing",
+      [
+        "expo-notifications",
+        {
+          "color": "#D4FF3F"
+        }
+      ]
     ],
     "extra": {
       "apiBaseUrl": "http://localhost:3000",

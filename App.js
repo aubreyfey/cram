@@ -15,6 +15,7 @@ import LibraryScreen from './src/screens/LibraryScreen';
 import PaywallScreen from './src/screens/PaywallScreen';
 import ReviewScreen from './src/screens/ReviewScreen';
 import DeckEditorScreen from './src/screens/DeckEditorScreen';
+import SettingsScreen from './src/screens/SettingsScreen';
 
 import { MAX_PAGES, generateDeck } from './src/lib/api';
 import { pickDocument, pickFromLibrary } from './src/lib/pickers';
@@ -23,12 +24,15 @@ import {
   deleteDeck,
   getStreak,
   loadDecks,
+  saveAllDecks,
   saveCards,
   saveDeck,
   touchStreak,
 } from './src/lib/storage';
 import { canUseDocuments, checkQuota, disableAdmin, isSubscribed } from './src/lib/entitlements';
 import { makeSampleDeck } from './src/lib/sampleDeck';
+import { mergeDecks, readDeckFile } from './src/lib/backup';
+import { configureNotifications } from './src/lib/reminders';
 import { colors } from './src/theme';
 
 export default function App() {
@@ -63,6 +67,7 @@ export default function App() {
 
   useEffect(() => {
     refresh();
+    configureNotifications();
   }, [refresh]);
 
   const run = useCallback(
@@ -138,6 +143,16 @@ export default function App() {
     setScreen('review');
   }, []);
 
+  // Restore / import: merge into what is here, never overwrite progress.
+  // Returns how many decks were new.
+  const importDecks = useCallback(async (incoming) => {
+    const current = await loadDecks();
+    const known = new Set(current.map((d) => d.id));
+    const merged = mergeDecks(current, incoming);
+    setDecks(await saveAllDecks(merged));
+    return incoming.filter((d) => !known.has(d.id)).length;
+  }, []);
+
   const handlePick = useCallback(
     async (kind) => {
       setSheetOpen(false);
@@ -147,24 +162,35 @@ export default function App() {
         return;
       }
 
-      if (kind === 'files' && !(await canUseDocuments())) {
-        setPaywallReason('documents');
-        setScreen('paywall');
-        return;
-      }
-
       try {
         const picked =
           kind === 'library' ? await pickFromLibrary() : await pickDocument();
         // Backing out of the system picker is not an error - do nothing.
         if (!picked) return;
-        if (picked.kind === 'pdf') start(picked);
-        else addPages(picked.pages);
+
+        // A deck or backup file is free: nothing is sent anywhere.
+        if (picked.kind === 'deckfile') {
+          const decks = await readDeckFile(picked.uri);
+          await importDecks(decks);
+          setScreen('library');
+          return;
+        }
+        // PDFs cost the most of any request, so they are the one Pro gate.
+        if (picked.kind === 'pdf') {
+          if (!(await canUseDocuments())) {
+            setPaywallReason('documents');
+            setScreen('paywall');
+            return;
+          }
+          start(picked);
+          return;
+        }
+        addPages(picked.pages);
       } catch (e) {
         Alert.alert("Couldn't open that", e.message);
       }
     },
-    [start, addPages],
+    [start, addPages, importDecks],
   );
 
   // Manual decks cost nothing and count against nothing.
@@ -297,6 +323,17 @@ export default function App() {
               </Screen>
             )}
 
+            {screen === 'settings' && (
+              <Screen preset="push">
+                <SettingsScreen
+                  tier={quota.admin ? 'admin' : pro ? 'pro' : 'free'}
+                  deckCount={decks.length}
+                  onImport={importDecks}
+                  onClose={() => setScreen('library')}
+                />
+              </Screen>
+            )}
+
             {screen === 'create' && (
               <Screen preset="modal">
                 <DeckEditorScreen onSave={saveManualDeck} onClose={() => setScreen('camera')} />
@@ -360,6 +397,7 @@ export default function App() {
                   onReviewDue={reviewDue}
                   onAddPages={appendToDeck}
                   onCreate={() => setScreen('create')}
+                  onSettings={() => setScreen('settings')}
                   onDelete={async (id) => setDecks(await deleteDeck(id))}
                   onLoadSample={async () => {
                     setDecks(await saveDeck(makeSampleDeck()));

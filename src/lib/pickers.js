@@ -46,7 +46,7 @@ export async function pickFromLibrary() {
 
 export async function pickDocument() {
   const result = await DocumentPicker.getDocumentAsync({
-    type: ['application/pdf', 'image/*'],
+    type: ['application/pdf', 'image/*', 'application/json', 'public.json'],
     copyToCacheDirectory: true,
     multiple: false,
   });
@@ -57,7 +57,11 @@ export async function pickDocument() {
     asset.mimeType === 'application/pdf' ||
     asset.name?.toLowerCase().endsWith('.pdf');
 
+  const isJson =
+    asset.mimeType === 'application/json' || asset.name?.toLowerCase().endsWith('.json');
+
   const name = asset.name ? asset.name.replace(/\.[^.]+$/, '') : null;
+  if (isJson) return { kind: 'deckfile', uri: asset.uri, name };
   if (isPdf) return { kind: 'pdf', uri: asset.uri, size: asset.size, name };
   return { kind: 'images', pages: [{ uri: asset.uri, size: asset.size, name }], name };
 }
