@@ -1,5 +1,7 @@
 # Cram
 
+<img src="assets/mascot/volt-idle-dark.gif" width="160" alt="Volt, the Cram owl">
+
 Point your phone at a lecture slide, a textbook page, or your own handwriting - or
 import a PDF, a screenshot, or a photo you already have.
 Get flashcards in about three seconds.
