@@ -15,8 +15,7 @@ import LibraryScreen from './src/screens/LibraryScreen';
 import PaywallScreen from './src/screens/PaywallScreen';
 import ReviewScreen from './src/screens/ReviewScreen';
 
-import { generateDeck } from './src/lib/api';
-import { MAX_PAGES } from './src/lib/api';
+import { MAX_PAGES, generateDeck } from './src/lib/api';
 import { pickDocument, pickFromLibrary } from './src/lib/pickers';
 import {
   addUsage,
@@ -231,6 +230,21 @@ export default function App() {
     setScreen(pages.length ? 'review' : 'camera');
   }, [pages.length]);
 
+  // Dev-only escape hatch from a failed request: pretend it worked, with the
+  // sample deck standing in for the model's output. Goes through the same
+  // append/save path as a real result so that path gets exercised too.
+  const useSampleInstead = useCallback(async () => {
+    const fresh = makeSampleDeck();
+    const deck = appendTo ? { ...appendTo, cards: [...appendTo.cards, ...fresh.cards] } : fresh;
+    setDecks(await saveDeck(deck));
+    setError(null);
+    setSource(null);
+    setAppendTo(null);
+    setPages([]);
+    setActiveDeck(deck);
+    setScreen('study');
+  }, [appendTo]);
+
   const discardPages = useCallback(() => {
     setPages([]);
     setScreen('camera');
@@ -294,6 +308,7 @@ export default function App() {
                     run(source);
                   }}
                   onCancel={cancel}
+                  onUseSample={__DEV__ ? useSampleInstead : undefined}
                 />
               </Screen>
             )}

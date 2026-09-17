@@ -152,8 +152,16 @@ just "more of the same". The check lives in `canUseDocuments()` in
 
 ## Studying
 
+- **Four modes, one schedule.** Chips under the deck title switch between
+  **Cards** (flip and rate), **Quiz** (multiple choice - the wrong answers are
+  other cards from the same deck, so it is the first pass over new material),
+  **Write** (type the answer, get an honesty check, grade yourself) and
+  **Blitz** (60 seconds, Nope / Got it, for the night before). Every mode
+  rates the same cards into the same SM-2 schedule.
 - **Swipe or tap to rate.** Again / Hard / Got it feed a trimmed SM-2; a card
   you know comes back in 1, 3, then ~8 days.
+- **Dev builds** get a "use sample cards instead" link on the request-failed
+  screen, so the whole app can be exercised on a machine with no API key.
 - **Edit** in the study header fixes the card in front of you, or deletes it.
   The model misreads a number now and then; this is cheaper than a new scan.
 - **Review before you send.** Every photo - shutter or library - lands on a

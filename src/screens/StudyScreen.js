@@ -13,11 +13,24 @@ import Confetti from '../components/Confetti';
 import Mascot from '../components/Mascot';
 import Flashcard from '../components/Flashcard';
 import PrimaryButton from '../components/PrimaryButton';
+import QuizStage from '../components/QuizStage';
+import WriteStage from '../components/WriteStage';
 import { RATING, dueCards, schedule } from '../lib/srs';
 import { shareDeck } from '../lib/share';
 import { colors, motion, radius, space, type } from '../theme';
 
-export default function StudyScreen({ deck, onClose, onUpdateDeck, onAddPages }) {
+// Four ways through the same queue, in rough order of difficulty. Quiz is
+// recognition (first pass), Cards and Write are recall, Blitz is Cards
+// against a clock for the night before. All of them feed the same schedule.
+const MODES = [
+  { key: 'cards', label: 'Cards' },
+  { key: 'quiz', label: 'Quiz' },
+  { key: 'write', label: 'Write' },
+  { key: 'blitz', label: 'Blitz' },
+];
+const BLITZ_SECONDS = 60;
+
+export default function StudyScreen({ deck, onClose, onUpdateDeck, onAddPages, initialMode = 'cards' }) {
   // The queue is a list of ids fixed at the start of the session; the cards
   // themselves are looked up live so an edit shows on the card in front of
   // you and a deleted card simply drops out of the run.
@@ -29,13 +42,35 @@ export default function StudyScreen({ deck, onClose, onUpdateDeck, onAddPages })
   const [index, setIndex] = useState(0);
   const [ratings, setRatings] = useState({});
   const [editing, setEditing] = useState(false);
+  const [mode, setMode] = useState(initialMode);
+  const [timeLeft, setTimeLeft] = useState(BLITZ_SECONDS);
+  const [timedOut, setTimedOut] = useState(false);
   const topCardRef = useRef(null);
 
   const progress = useSharedValue(0);
   const progressStyle = useAnimatedStyle(() => ({ width: `${progress.value * 100}%` }));
 
   const insets = useSafeAreaInsets();
-  const done = index >= queue.length;
+  const done = index >= queue.length || timedOut;
+
+  // Blitz: a clock, and only two answers. Switching modes resets it so a
+  // half-finished sprint doesn't leak into a calm Cards session.
+  useEffect(() => {
+    setTimeLeft(BLITZ_SECONDS);
+    setTimedOut(false);
+    if (mode !== 'blitz' || done) return;
+    const t = setInterval(() => {
+      setTimeLeft((n) => {
+        if (n <= 1) {
+          clearInterval(t);
+          setTimedOut(true);
+          return 0;
+        }
+        return n - 1;
+      });
+    }, 1000);
+    return () => clearInterval(t);
+  }, [mode]);
 
   // The buttons ask the top card to fly out; the card reports back through
   // onRate once it has left. That way tapping and swiping look identical
@@ -90,11 +125,15 @@ export default function StudyScreen({ deck, onClose, onUpdateDeck, onAddPages })
             <CountUp to={got} />
             <Text style={styles.summaryTotal}>/{queue.length}</Text>
           </Text>
-          <Text style={styles.summaryLabel}>cards you knew</Text>
+          <Text style={styles.summaryLabel}>
+            {mode === 'blitz' ? `cards you knew in ${BLITZ_SECONDS} seconds` : 'cards you knew'}
+          </Text>
           <Text style={styles.summaryBody}>
-            {cleanSweep
-              ? 'Clean sweep. Nothing to redo.'
-              : `${ratings[RATING.AGAIN]} coming back tomorrow.`}
+            {timedOut
+              ? `Time. ${queue.length - index} left in the deck.`
+              : cleanSweep
+                ? 'Clean sweep. Nothing to redo.'
+                : `${ratings[RATING.AGAIN]} coming back tomorrow.`}
           </Text>
           <PrimaryButton label="Done" onPress={onClose} style={{ marginTop: space(10) }} />
           {/* The end of a run is when someone has the next slide in their
@@ -142,25 +181,63 @@ export default function StudyScreen({ deck, onClose, onUpdateDeck, onAddPages })
         <Animated.View style={[styles.fill, progressStyle]} />
       </View>
 
-      <View style={styles.stage}>
-        {visible
-          .map((card, i) => (
-            <Flashcard
-              key={card.id}
-              ref={i === 0 ? topCardRef : null}
-              card={card}
-              depth={i}
-              onRate={rate}
-            />
-          ))
-          .reverse()}
+      <View style={styles.modes}>
+        {MODES.map((m) => {
+          const active = m.key === mode;
+          return (
+            <Pressable
+              key={m.key}
+              onPress={() => setMode(m.key)}
+              style={[styles.modeChip, active && styles.modeChipActive]}
+              hitSlop={6}
+            >
+              <Text style={[styles.modeText, active && styles.modeTextActive]}>{m.label}</Text>
+            </Pressable>
+          );
+        })}
+        {mode === 'blitz' ? (
+          <Text style={[styles.clock, timeLeft <= 10 && { color: colors.again }]}>{timeLeft}s</Text>
+        ) : null}
       </View>
 
-      <View style={[styles.rateRow, { paddingBottom: insets.bottom + space(4) }]}>
-        <RateButton label="Again" color={colors.again} onPress={() => requestRate(RATING.AGAIN)} />
-        <RateButton label="Hard" color={colors.hard} onPress={() => requestRate(RATING.HARD)} />
-        <RateButton label="Got it" color={colors.good} onPress={() => requestRate(RATING.GOOD)} />
-      </View>
+      {mode === 'quiz' ? (
+        <View style={styles.stageFlat}>
+          <QuizStage card={queue[index]} pool={deck.cards} onRate={rate} />
+        </View>
+      ) : mode === 'write' ? (
+        <View style={styles.stageFlat}>
+          <WriteStage card={queue[index]} onRate={rate} />
+        </View>
+      ) : (
+        <View style={styles.stage}>
+          {visible
+            .map((card, i) => (
+              <Flashcard
+                key={card.id}
+                ref={i === 0 ? topCardRef : null}
+                card={card}
+                depth={i}
+                onRate={rate}
+              />
+            ))
+            .reverse()}
+        </View>
+      )}
+
+      {mode === 'cards' ? (
+        <View style={[styles.rateRow, { paddingBottom: insets.bottom + space(4) }]}>
+          <RateButton label="Again" color={colors.again} onPress={() => requestRate(RATING.AGAIN)} />
+          <RateButton label="Hard" color={colors.hard} onPress={() => requestRate(RATING.HARD)} />
+          <RateButton label="Got it" color={colors.good} onPress={() => requestRate(RATING.GOOD)} />
+        </View>
+      ) : mode === 'blitz' ? (
+        <View style={[styles.rateRow, { paddingBottom: insets.bottom + space(4) }]}>
+          <RateButton label="Nope" color={colors.again} onPress={() => requestRate(RATING.AGAIN)} />
+          <RateButton label="Got it" color={colors.good} onPress={() => requestRate(RATING.GOOD)} />
+        </View>
+      ) : (
+        <View style={{ height: insets.bottom }} />
+      )}
 
       <CardEditor
         card={queue[index]}
@@ -209,7 +286,26 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   fill: { height: 3, backgroundColor: colors.accent },
-  stage: { flex: 1, marginTop: space(8) },
+  stage: { flex: 1, marginTop: space(6) },
+  stageFlat: { flex: 1, marginTop: space(4) },
+  modes: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space(2),
+    paddingHorizontal: space(6),
+    marginTop: space(4),
+  },
+  modeChip: {
+    paddingHorizontal: space(3),
+    paddingVertical: space(1.5),
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.line,
+  },
+  modeChipActive: { backgroundColor: colors.accent, borderColor: colors.accent },
+  modeText: { ...type.label, fontSize: 12, color: colors.textDim },
+  modeTextActive: { color: colors.accentInk },
+  clock: { ...type.mono, color: colors.accent, marginLeft: 'auto' },
   rateRow: {
     flexDirection: 'row',
     gap: space(3),

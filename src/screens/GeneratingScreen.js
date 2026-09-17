@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Image, StyleSheet, Text, View } from 'react-native';
+import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, {
   Easing,
   useAnimatedStyle,
@@ -26,7 +26,7 @@ const PDF_STEPS = [
   'Writing your cards',
 ];
 
-export default function GeneratingScreen({ source, error, onRetry, onCancel }) {
+export default function GeneratingScreen({ source, error, onRetry, onCancel, onUseSample }) {
   const isPdf = source?.kind === 'pdf';
   const pageCount = source?.pages?.length ?? 1;
   // A stack of photos takes as long as a PDF, so it gets the slower narration.
@@ -111,6 +111,13 @@ export default function GeneratingScreen({ source, error, onRetry, onCancel }) {
               onPress={onCancel}
               style={{ marginTop: space(3) }}
             />
+            {/* Dev builds only: lets the rest of the app be exercised on a
+                machine with no API key. Never rendered in a release build. */}
+            {__DEV__ && onUseSample ? (
+              <Pressable onPress={onUseSample} style={styles.devLink} hitSlop={8}>
+                <Text style={styles.devLinkText}>DEV · use sample cards instead</Text>
+              </Pressable>
+            ) : null}
           </View>
         </View>
       ) : (
@@ -180,6 +187,8 @@ const styles = StyleSheet.create({
   step: { ...type.title, fontSize: 22, color: colors.text },
   errorTitle: { ...type.body, fontSize: 18, color: colors.text, textAlign: 'center' },
   actions: { marginTop: space(8), alignSelf: 'stretch' },
+  devLink: { alignSelf: 'center', marginTop: space(5) },
+  devLinkText: { ...type.mono, color: colors.textFaint },
   dots: { flexDirection: 'row', marginTop: space(5), gap: space(2) },
   dot: { width: 22, height: 4, borderRadius: 2, backgroundColor: colors.line },
 });
