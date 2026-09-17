@@ -39,10 +39,14 @@ import { canUseDocuments, checkQuota, disableAdmin, isSubscribed } from './src/l
 import { makeSampleDeck } from './src/lib/sampleDeck';
 import { mergeDecks, readDeckFile } from './src/lib/backup';
 import { configureNotifications, rearmNag } from './src/lib/reminders';
+import { initMonitoring, wrapRoot } from './src/lib/monitoring';
 import { colors } from './src/theme';
+
+// Before anything renders, so a crash in the first frame is still caught.
+initMonitoring();
 import { alert } from './src/lib/alert';
 
-export default function App() {
+function App() {
   const [screen, setScreen] = useState('camera');
   const [decks, setDecks] = useState([]);
   const [activeDeck, setActiveDeck] = useState(null);
@@ -460,6 +464,10 @@ export default function App() {
                   onUpdateDeck={updateDeck}
                   onAddPages={appendToDeck}
                   onFeedback={() => setScreen('feedback')}
+                  onPaywall={(reason) => {
+                    setPaywallReason(reason);
+                    setScreen('paywall');
+                  }}
                   onClose={backToCamera}
                 />
               </Screen>
@@ -540,3 +548,5 @@ export default function App() {
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
 });
+
+export default wrapRoot(App);

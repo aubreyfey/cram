@@ -110,7 +110,15 @@ common rejection reason for this app category, so open both links from the
 paywall on a real device before submitting. The pages are a plain-English
 draft, not legal advice; read them once.
 
-**5. The app key is a placeholder.** `app.json` → `extra.appKey` and the
+**5. Crash reporting is wired but dormant.** `@sentry/react-native` is set up
+(errors only - no replay, no tracing, no PII) and does nothing until
+`app.json` → `extra.sentryDsn` has a DSN. Your Sentry org only lets owners
+create projects: have the owner create a project called `cram` in
+`north-beam-llc` (platform React Native), copy its DSN into `extra.sentryDsn`,
+and crashes start arriving. Don't point it at the existing `react-native`
+project - that is a different app.
+
+**6. The app key is a placeholder.** `app.json` → `extra.appKey` and the
 server's `CRAM_APP_KEY` both say `change-me`. They have to match.
 
 ## Submitting
@@ -186,6 +194,9 @@ just "more of the same". The check lives in `canUseDocuments()` in
   via Import → PDF or file. Free, no account needed.
 - **Dev builds** get a "use sample cards instead" link on the request-failed
   screen, so the whole app can be exercised on a machine with no API key.
+- **Why?** on the back of any card. Volt explains why the answer is the
+  answer, in two or three sentences - not a restatement. Cached on the card so
+  it is one call per card, ever. Free users get three a day; Pro is unlimited.
 - **Edit** in the study header fixes the card in front of you, or deletes it.
   The model misreads a number now and then; this is cheaper than a new scan.
 - **Write or paste - free, no server.** Import → "Write or paste", or "New"

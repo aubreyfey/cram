@@ -1,5 +1,5 @@
 import React, { forwardRef, useEffect, useImperativeHandle } from 'react';
-import { StyleSheet, Text, View, Dimensions } from 'react-native';
+import { Dimensions, StyleSheet, Text, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   interpolate,
@@ -16,7 +16,7 @@ const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
 const SWIPE_THRESHOLD = SCREEN_W * 0.28;
 const EXIT_MS = 220;
 
-const Flashcard = forwardRef(function Flashcard({ card, onRate, depth = 0 }, ref) {
+const Flashcard = forwardRef(function Flashcard({ card, onRate, onExplain, depth = 0 }, ref) {
   const flip = useSharedValue(0);
   const x = useSharedValue(0);
   const y = useSharedValue(0);
@@ -62,8 +62,17 @@ const Flashcard = forwardRef(function Flashcard({ card, onRate, depth = 0 }, ref
 
   useImperativeHandle(ref, () => ({ flyOut }), [onRate]);
 
+  // The "Why?" pill has its own tap; the card's flip waits for it to fail
+  // so tapping the pill never flips the card back over.
+  const whyTap = Gesture.Tap()
+    .enabled(isTop && !!onExplain)
+    .onEnd(() => {
+      if (onExplain) runOnJS(onExplain)(card);
+    });
+
   const tap = Gesture.Tap()
     .enabled(isTop)
+    .requireExternalGestureToFail(whyTap)
     .onEnd(() => {
       flip.value = withSpring(flip.value > 0.5 ? 0 : 1, motion.snap);
       runOnJS(flipHaptic)();
@@ -151,6 +160,15 @@ const Flashcard = forwardRef(function Flashcard({ card, onRate, depth = 0 }, ref
         <Animated.View style={[styles.face, styles.back, backStyle]}>
           <Text style={[styles.kicker, { color: colors.accent }]}>ANSWER</Text>
           <Text style={styles.answer}>{card.back}</Text>
+          {/* "Why?" - a tap here must not flip the card back, so it is its
+              own Pressable and the tap gesture is told to ignore it. */}
+          {isTop && onExplain ? (
+            <GestureDetector gesture={whyTap}>
+              <View style={[styles.why, card.explanation && styles.whyHave]} hitSlop={8}>
+                <Text style={styles.whyText}>{card.explanation ? 'WHY ↗' : 'WHY?'}</Text>
+              </View>
+            </GestureDetector>
+          ) : null}
         </Animated.View>
 
         <Animated.View style={[styles.badge, styles.badgeLeft, againBadge]}>
@@ -195,6 +213,18 @@ const styles = StyleSheet.create({
   prompt: { ...type.card, color: colors.text },
   answer: { ...type.body, fontSize: 19, lineHeight: 27, color: colors.text },
   hint: { ...type.body, color: colors.textDim, marginTop: space(4), fontSize: 14 },
+  why: {
+    position: 'absolute',
+    bottom: space(5),
+    right: space(6),
+    paddingHorizontal: space(3),
+    paddingVertical: space(1.5),
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.accent + '88',
+  },
+  whyHave: { backgroundColor: colors.accent + '22' },
+  whyText: { ...type.mono, fontSize: 10, color: colors.accent },
   tapCue: {
     ...type.mono,
     color: colors.textFaint,

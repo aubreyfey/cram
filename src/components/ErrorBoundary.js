@@ -2,6 +2,7 @@ import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import Mascot from './Mascot';
 import PrimaryButton from './PrimaryButton';
+import { reportError } from '../lib/monitoring';
 import { colors, space, type } from '../theme';
 
 // In a release build an uncaught render error is a white screen with no way
@@ -14,8 +15,9 @@ export default class ErrorBoundary extends React.Component {
     return { error };
   }
 
-  componentDidCatch(error) {
+  componentDidCatch(error, info) {
     if (__DEV__) console.error(error);
+    reportError(error, { componentStack: info?.componentStack });
   }
 
   reset = () => this.setState({ error: null });

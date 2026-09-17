@@ -18,8 +18,9 @@ import http from 'node:http';
 import generate from './api/generate.js';
 import admin from './api/admin.js';
 import feedback from './api/feedback.js';
+import explain from './api/explain.js';
 
-const ROUTES = { '/api/generate': generate, '/api/admin': admin, '/api/feedback': feedback };
+const ROUTES = { '/api/generate': generate, '/api/admin': admin, '/api/feedback': feedback, '/api/explain': explain };
 
 const PORT = Number(process.env.PORT) || 3000;
 const MAX_BODY = 40 * 1024 * 1024;

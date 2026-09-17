@@ -56,6 +56,14 @@
             "./assets/sounds/volt-alarm.wav"
           ]
         }
+      ],
+      [
+        "@sentry/react-native/expo",
+        {
+          "url": "https://sentry.io/",
+          "organization": "north-beam-llc",
+          "project": "cram"
+        }
       ]
     ],
     "extra": {
@@ -63,7 +71,8 @@
       "appKey": "change-me",
       "unlockAll": false,
       "siteUrl": "https://cram.vercel.app",
-      "feedbackEmail": ""
+      "feedbackEmail": "",
+      "sentryDsn": ""
     },
     "web": {
       "favicon": "./assets/favicon.png"

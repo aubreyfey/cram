@@ -90,6 +90,16 @@ export async function restore() {
 // Documents are Pro-only, for two reasons that happen to agree: a 50-page PDF
 // can produce a hundred cards in one shot, which makes a 10-card daily limit
 // meaningless, and it is by far the most expensive request we can send.
+// "Why?" on a card. Free users get a few a day - enough to see it is worth
+// having, not enough to study from. Subscribers and admins are unlimited.
+export const FREE_DAILY_EXPLAINS = 3;
+
+export async function canExplain() {
+  if (await isSubscribed()) return true;
+  const usage = await getUsage();
+  return (usage.explains || 0) < FREE_DAILY_EXPLAINS;
+}
+
 export async function canUseDocuments() {
   return await isSubscribed();
 }

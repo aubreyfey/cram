@@ -28,6 +28,10 @@ const HEADLINES = {
     title: 'Whole PDFs, one tap',
     sub: 'Drop in a lecture deck or a chapter and get every card at once.',
   },
+  explain: {
+    title: 'Ask why, every card',
+    sub: "Three explanations a day are free. Pro doesn't count.",
+  },
   default: {
     title: 'Study without limits',
     sub: 'Turn any page into a deck, as many as you need.',

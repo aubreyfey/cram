@@ -5,6 +5,7 @@
   "dependencies": {
     "@expo/metro-runtime": "~57.0.15",
     "@react-native-async-storage/async-storage": "2.2.0",
+    "@sentry/react-native": "~7.11.0",
     "babel-preset-expo": "~57.0.0",
     "expo": "~57.0.20",
     "expo-camera": "~57.0.4",

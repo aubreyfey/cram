@@ -186,3 +186,32 @@ export async function verifyAdminCode(code) {
     throw new ApiError("That's not it.", 'bad_code');
   }
 }
+
+// "Why?" on a card. Returns the explanation text; the caller caches it on
+// the card so this runs at most once per card.
+export async function explainCard(card, { subject, signal } = {}) {
+  const admin = await getAdminCode();
+  let res;
+  try {
+    res = await fetch(`${BASE_URL}/api/explain`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-cram-key': Constants.expoConfig?.extra?.appKey ?? '',
+        ...(admin ? { 'x-cram-admin': admin } : {}),
+      },
+      body: JSON.stringify({ front: card.front, back: card.back, subject: subject || undefined }),
+      signal,
+    });
+  } catch (e) {
+    if (e.name === 'AbortError') throw e;
+    throw new ApiError(
+      __DEV__ ? `Can't reach the Cram API at ${BASE_URL}.` : "Couldn't reach Cram right now.",
+      'network',
+    );
+  }
+  if (res.status === 429) throw new ApiError('Give it a minute.', 'rate_limit');
+  if (!res.ok) throw new ApiError("Couldn't explain that one. Try again.", 'server');
+  const { explanation } = await res.json();
+  return explanation;
+}

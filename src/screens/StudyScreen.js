@@ -9,6 +9,7 @@ import Animated, {
   withSpring,
 } from 'react-native-reanimated';
 import CardEditor from '../components/CardEditor';
+import ExplainSheet from '../components/ExplainSheet';
 import Confetti from '../components/Confetti';
 import Mascot from '../components/Mascot';
 import Flashcard from '../components/Flashcard';
@@ -17,6 +18,9 @@ import QuizStage from '../components/QuizStage';
 import WriteStage from '../components/WriteStage';
 import { RATING, dueCards, schedule } from '../lib/srs';
 import { shareDeck } from '../lib/share';
+import { explainCard } from '../lib/api';
+import { canExplain } from '../lib/entitlements';
+import { addExplain } from '../lib/storage';
 import { colors, motion, radius, space, type } from '../theme';
 
 // Four ways through the same queue, in rough order of difficulty. Quiz is
@@ -30,7 +34,15 @@ const MODES = [
 ];
 const BLITZ_SECONDS = 60;
 
-export default function StudyScreen({ deck, onClose, onUpdateDeck, onAddPages, onFeedback, initialMode = 'cards' }) {
+export default function StudyScreen({
+  deck,
+  onClose,
+  onUpdateDeck,
+  onAddPages,
+  onFeedback,
+  onPaywall,
+  initialMode = 'cards',
+}) {
   // The queue is a list of ids fixed at the start of the session; the cards
   // themselves are looked up live so an edit shows on the card in front of
   // you and a deleted card simply drops out of the run.
@@ -42,6 +54,9 @@ export default function StudyScreen({ deck, onClose, onUpdateDeck, onAddPages, o
   const [index, setIndex] = useState(0);
   const [ratings, setRatings] = useState({});
   const [editing, setEditing] = useState(false);
+  // "Why?" state: which card, loading, the text or an error. The text is
+  // also written onto the card so the next time is instant and free.
+  const [explain, setExplain] = useState(null);
   const [mode, setMode] = useState(initialMode);
   const [timeLeft, setTimeLeft] = useState(BLITZ_SECONDS);
   const [timedOut, setTimedOut] = useState(false);
@@ -106,6 +121,26 @@ export default function StudyScreen({ deck, onClose, onUpdateDeck, onAddPages, o
     const next = index + 1;
     progress.value = withSpring(next / queue.length, motion.soft);
     setIndex(next);
+  };
+
+  const askWhy = async (card) => {
+    if (card.explanation) {
+      setExplain({ card, explanation: card.explanation });
+      return;
+    }
+    if (!(await canExplain())) {
+      onPaywall?.('explain');
+      return;
+    }
+    setExplain({ card, loading: true });
+    try {
+      const explanation = await explainCard(card, { subject: deck.subject });
+      await addExplain();
+      setExplain({ card, explanation });
+      saveCard({ ...card, explanation });
+    } catch (e) {
+      setExplain({ card, error: e.message });
+    }
   };
 
   const saveCard = (card) => {
@@ -231,6 +266,7 @@ export default function StudyScreen({ deck, onClose, onUpdateDeck, onAddPages, o
                 card={card}
                 depth={i}
                 onRate={rate}
+                onExplain={askWhy}
               />
             ))
             .reverse()}
@@ -251,6 +287,15 @@ export default function StudyScreen({ deck, onClose, onUpdateDeck, onAddPages, o
       ) : (
         <View style={{ height: insets.bottom }} />
       )}
+
+      <ExplainSheet
+        card={explain?.card}
+        visible={!!explain}
+        loading={!!explain?.loading}
+        explanation={explain?.explanation}
+        error={explain?.error}
+        onClose={() => setExplain(null)}
+      />
 
       <CardEditor
         card={queue[index]}
