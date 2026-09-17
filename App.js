@@ -6,6 +6,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import ErrorBoundary from './src/components/ErrorBoundary';
 import AdminSheet from './src/components/AdminSheet';
+import RenameSheet from './src/components/RenameSheet';
 import Screen from './src/components/Screen';
 import SourceSheet from './src/components/SourceSheet';
 import CameraScreen from './src/screens/CameraScreen';
@@ -57,6 +58,7 @@ function App() {
   const [paywallReason, setPaywallReason] = useState(null);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [adminOpen, setAdminOpen] = useState(false);
+  const [renaming, setRenaming] = useState(null);
   const [streak, setStreak] = useState(0);
   const [exams, setExams] = useState([]);
   const [editingExam, setEditingExam] = useState(null);
@@ -213,6 +215,11 @@ function App() {
     },
     [start, addPages, importDecks],
   );
+
+  const renameDeck = useCallback(async (deck) => {
+    setDecks(await saveDeck(deck));
+    if (activeRef.current?.id === deck.id) setActiveDeck(deck);
+  }, []);
 
   // Manual decks cost nothing and count against nothing.
   const saveManualDeck = useCallback(async (deck) => {
@@ -464,6 +471,7 @@ function App() {
                   onUpdateDeck={updateDeck}
                   onAddPages={appendToDeck}
                   onFeedback={() => setScreen('feedback')}
+                  onRename={(d) => setRenaming(d)}
                   onPaywall={(reason) => {
                     setPaywallReason(reason);
                     setScreen('paywall');
@@ -484,6 +492,7 @@ function App() {
                     setScreen('study');
                   }}
                   onReviewDue={reviewDue}
+                  onRename={(d) => setRenaming(d)}
                   onAddPages={appendToDeck}
                   onCreate={() => setScreen('create')}
                   onSettings={() => setScreen('settings')}
@@ -528,6 +537,13 @@ function App() {
               isPro={pro}
               onPick={handlePick}
               onClose={() => setSheetOpen(false)}
+            />
+
+            <RenameSheet
+              deck={renaming}
+              visible={!!renaming}
+              onSave={renameDeck}
+              onClose={() => setRenaming(null)}
             />
 
             <AdminSheet

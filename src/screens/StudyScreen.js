@@ -41,6 +41,7 @@ export default function StudyScreen({
   onAddPages,
   onFeedback,
   onPaywall,
+  onRename,
   initialMode = 'cards',
 }) {
   // The queue is a list of ids fixed at the start of the session; the cards
@@ -226,9 +227,18 @@ export default function StudyScreen({
       </View>
 
       <View style={styles.titleRow}>
-        <Text style={[styles.deckTitle, { flex: 1 }]} numberOfLines={1}>
-          {deck.title}
-        </Text>
+        {/* A cross-deck session has no single deck to rename. */}
+        <Pressable
+          onPress={() => onRename?.(deck)}
+          disabled={deck.virtual || !onRename}
+          hitSlop={8}
+          style={{ flex: 1 }}
+        >
+          <Text style={styles.deckTitle} numberOfLines={1}>
+            {deck.title}
+          </Text>
+          {deck.subject ? <Text style={styles.deckSubject}>{deck.subject}</Text> : null}
+        </Pressable>
         <Mascot mood={reaction} size={40} />
       </View>
 
@@ -364,6 +374,7 @@ const styles = StyleSheet.create({
     fontSize: 22,
     color: colors.text,
   },
+  deckSubject: { ...type.mono, color: colors.textFaint, marginTop: 2 },
   track: {
     height: 3,
     backgroundColor: colors.line,

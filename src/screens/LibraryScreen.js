@@ -28,6 +28,7 @@ export default function LibraryScreen({
   onOpen,
   onReviewDue,
   onAddPages,
+  onRename,
   onCreate,
   onSettings,
   onClose,
@@ -51,6 +52,7 @@ export default function LibraryScreen({
   // is the most this needs, and it matches the delete confirm already here.
   const deckActions = (deck) => {
     alert(deck.title, null, [
+      { text: 'Rename', onPress: () => onRename(deck) },
       { text: 'Add pages to this deck', onPress: () => onAddPages(deck) },
       { text: 'Share', onPress: () => shareDeck(deck) },
       { text: 'Delete', style: 'destructive', onPress: () => confirmDelete(deck) },
