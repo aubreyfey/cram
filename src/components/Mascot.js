@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
-import { StyleSheet, View } from 'react-native';
 import Animated, {
   Easing,
+  useAnimatedProps,
   useAnimatedStyle,
   useReducedMotion,
   useSharedValue,
@@ -11,17 +11,35 @@ import Animated, {
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
-import { colors, motion } from '../theme';
+import Svg, { Circle, ClipPath, Defs, Ellipse, G, Path, Rect } from 'react-native-svg';
+import { mascot as c, motion } from '../theme';
 
-// Pip: a flashcard with a face. Built from plain Views so it renders on iOS,
-// Android and web with no image assets, and so every expression is just a
-// style change we can animate.
+// Volt: a geometric owl. The vector lives in assets/mascot/volt.svg; this is
+// the same drawing as react-native-svg so every part can move. Volt green is
+// spent in two places only - the irises and the card - and focus is a straight
+// lid line, not a face, so it survives 24px.
 //
 // Moods:
 //   idle     - gentle bob, blinks now and then. Empty states, quiet moments.
-//   thinking - eyes dart, slight lean. While the page is being read.
-//   happy    - bounce, squinty eyes, big grin. Deck finished.
-//   oops     - quick head-shake, small frown. A card rated Again.
+//   thinking - eyes drift side to side, lids lift a little, slight lean.
+//   happy    - eyes close to arcs, bounce, card lifts. Deck finished.
+//   oops     - lids drop, tufts flare, quick head-shake. A card rated Again.
+
+const AEllipse = Animated.createAnimatedComponent(Ellipse);
+const ACircle = Animated.createAnimatedComponent(Circle);
+
+// One egg path. Wings, belly and lids are clipped inside it so nothing ever
+// breaks the silhouette.
+const BODY =
+  'M64 20 C88 20 104 40 104 72 C104 100 88 118 64 118 C40 118 24 100 24 72 C24 40 40 20 64 20 Z';
+
+// The lid is a straight cut from the outer edge (y1) to the centre (y2).
+// Lower in the centre reads as concentration; higher reads as surprise.
+const LIDS = {
+  idle: [41, 47],
+  thinking: [37, 39],
+  oops: [46, 52],
+};
 
 export default function Mascot({ mood = 'idle', size = 72, style }) {
   const reduce = useReducedMotion();
@@ -32,7 +50,6 @@ export default function Mascot({ mood = 'idle', size = 72, style }) {
   const tilt = useSharedValue(0);
   const pop = useSharedValue(1);
   const jump = useSharedValue(0);
-  const squint = useSharedValue(1);
 
   useEffect(() => {
     if (reduce) return;
@@ -64,8 +81,8 @@ export default function Mascot({ mood = 'idle', size = 72, style }) {
     if (mood === 'thinking') {
       look.value = withRepeat(
         withSequence(
-          withTiming(3, { duration: 650, easing: Easing.inOut(Easing.quad) }),
-          withTiming(-3, { duration: 650, easing: Easing.inOut(Easing.quad) }),
+          withTiming(4, { duration: 650, easing: Easing.inOut(Easing.quad) }),
+          withTiming(-4, { duration: 650, easing: Easing.inOut(Easing.quad) }),
         ),
         -1,
         true,
@@ -86,10 +103,6 @@ export default function Mascot({ mood = 'idle', size = 72, style }) {
       );
     } else if (mood === 'oops') {
       look.value = withTiming(0, { duration: 150 });
-      squint.value = withSequence(
-        withTiming(0.55, { duration: 120 }),
-        withDelay(600, withTiming(1, { duration: 200 })),
-      );
       tilt.value = withSequence(
         withTiming(-10, { duration: 90 }),
         withTiming(10, { duration: 120 }),
@@ -99,7 +112,6 @@ export default function Mascot({ mood = 'idle', size = 72, style }) {
       jump.value = withSequence(withTiming(5, { duration: 100 }), withSpring(0, motion.soft));
     } else {
       look.value = withTiming(0, { duration: 250 });
-      squint.value = withTiming(1, { duration: 200 });
       tilt.value = withSpring(0, motion.soft);
     }
   }, [mood, reduce]);
@@ -112,120 +124,102 @@ export default function Mascot({ mood = 'idle', size = 72, style }) {
     ],
   }));
 
-  const eyeStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: look.value }, { scaleY: blink.value * squint.value }],
-  }));
+  // Eyes squash on blink and drift with look. Discs stay put; only the iris,
+  // pupil and catchlight move, the way real eyes do.
+  const discL = useAnimatedProps(() => ({ ry: 17 * blink.value }));
+  const discR = useAnimatedProps(() => ({ ry: 17 * blink.value }));
+  const irisL = useAnimatedProps(() => ({ cx: 47 + look.value, ry: 10 * blink.value }));
+  const irisR = useAnimatedProps(() => ({ cx: 81 + look.value, ry: 10 * blink.value }));
+  const pupilL = useAnimatedProps(() => ({ cx: 47 + look.value, ry: 5 * blink.value }));
+  const pupilR = useAnimatedProps(() => ({ cx: 81 + look.value, ry: 5 * blink.value }));
+  const glintL = useAnimatedProps(() => ({ cx: 44.5 + look.value, opacity: blink.value > 0.5 ? 1 : 0 }));
+  const glintR = useAnimatedProps(() => ({ cx: 78.5 + look.value, opacity: blink.value > 0.5 ? 1 : 0 }));
 
-  const s = size / 72;
   const happy = mood === 'happy';
-  const thinking = mood === 'thinking';
   const oops = mood === 'oops';
+  const [lidOuter, lidInner] = LIDS[mood] ?? LIDS.idle;
+  const flare = oops ? 7 : 0;
 
   return (
-    <Animated.View style={[{ width: 72 * s, height: 88 * s }, style, bodyStyle]}>
-      <View style={[styles.body, { width: 64 * s, height: 80 * s, borderRadius: 14 * s }]}>
-        {/* Card "title line" - a hint that this is a flashcard, not a blob. */}
-        <View style={[styles.rule, { top: 12 * s, width: 22 * s, height: 3 * s }]} />
+    <Animated.View style={[{ width: size, height: size }, style, bodyStyle]}>
+      <Svg width={size} height={size} viewBox="0 0 128 128">
+        <Defs>
+          <ClipPath id="volt-clip">
+            <Path d={BODY} />
+          </ClipPath>
+        </Defs>
 
-        <View style={[styles.face, { top: 30 * s }]}>
-          <View style={[styles.eyes, { gap: 12 * s }]}>
-            {[0, 1].map((i) =>
-              happy ? (
-                <View
-                  key={i}
-                  style={[
-                    styles.eyeHappy,
-                    {
-                      width: 11 * s,
-                      height: 6 * s,
-                      borderTopWidth: 3 * s,
-                      borderTopLeftRadius: 6 * s,
-                      borderTopRightRadius: 6 * s,
-                    },
-                  ]}
-                />
-              ) : (
-                <Animated.View
-                  key={i}
-                  style={[
-                    styles.eye,
-                    { width: 8 * s, height: 8 * s, borderRadius: 4 * s },
-                    eyeStyle,
-                  ]}
-                />
-              ),
-            )}
-          </View>
+        {/* ear tufts - flare outward when something went wrong */}
+        <Path
+          d="M34 36 L42 10 L58 30 Z"
+          fill={c.body}
+          stroke={c.edge}
+          strokeWidth={3}
+          strokeLinejoin="round"
+          transform={`rotate(${-flare} 46 34)`}
+        />
+        <Path
+          d="M94 36 L86 10 L70 30 Z"
+          fill={c.body}
+          stroke={c.edge}
+          strokeWidth={3}
+          strokeLinejoin="round"
+          transform={`rotate(${flare} 82 34)`}
+        />
 
-          {happy ? (
-            <View
-              style={[
-                styles.mouthHappy,
-                {
-                  width: 20 * s,
-                  height: 10 * s,
-                  borderBottomLeftRadius: 10 * s,
-                  borderBottomRightRadius: 10 * s,
-                  marginTop: 8 * s,
-                },
-              ]}
-            />
-          ) : thinking ? (
-            <View
-              style={[
-                styles.mouthO,
-                { width: 7 * s, height: 7 * s, borderRadius: 4 * s, marginTop: 9 * s },
-              ]}
-            />
-          ) : oops ? (
-            <View
-              style={[
-                styles.mouthSad,
-                {
-                  width: 14 * s,
-                  height: 7 * s,
-                  borderTopWidth: 3 * s,
-                  borderTopLeftRadius: 7 * s,
-                  borderTopRightRadius: 7 * s,
-                  marginTop: 11 * s,
-                },
-              ]}
-            />
-          ) : (
-            <View
-              style={[
-                styles.mouth,
-                { width: 12 * s, height: 3 * s, borderRadius: 2 * s, marginTop: 10 * s },
-              ]}
-            />
-          )}
-        </View>
-      </View>
+        <Path d={BODY} fill={c.body} stroke={c.edge} strokeWidth={3} />
+
+        <G clipPath="url(#volt-clip)">
+          <Path d="M32 58 C24 76 26 98 38 112 C45 98 45 76 32 58 Z" fill={c.wing} />
+          <Path d="M96 58 C104 76 102 98 90 112 C83 98 83 76 96 58 Z" fill={c.wing} />
+          <Rect x={48} y={76} width={32} height={32} rx={16} fill={c.belly} />
+        </G>
+
+        {happy ? (
+          // Closed, smiling eyes: two arcs in bone, same weight as the outline
+          // so the face doesn't go thin.
+          <>
+            <Path d="M34 56 A13 13 0 0 1 60 56" stroke={c.bone} strokeWidth={5} strokeLinecap="round" fill="none" />
+            <Path d="M68 56 A13 13 0 0 1 94 56" stroke={c.bone} strokeWidth={5} strokeLinecap="round" fill="none" />
+          </>
+        ) : (
+          <>
+            <AEllipse cx={47} cy={52} rx={17} animatedProps={discL} fill={c.bone} />
+            <AEllipse cx={81} cy={52} rx={17} animatedProps={discR} fill={c.bone} />
+            <AEllipse cy={52} rx={10} animatedProps={irisL} fill={c.volt} />
+            <AEllipse cy={52} rx={10} animatedProps={irisR} fill={c.volt} />
+            <AEllipse cy={52} rx={5} animatedProps={pupilL} fill={c.ink} />
+            <AEllipse cy={52} rx={5} animatedProps={pupilR} fill={c.ink} />
+            <ACircle cy={49.5} r={2.2} animatedProps={glintL} fill={c.bone} />
+            <ACircle cy={49.5} r={2.2} animatedProps={glintR} fill={c.bone} />
+
+            <G clipPath="url(#volt-clip)">
+              <Path d={`M26 ${lidOuter} L64 ${lidInner} L64 28 L26 28 Z`} fill={c.body} />
+              <Path d={`M102 ${lidOuter} L64 ${lidInner} L64 28 L102 28 Z`} fill={c.body} />
+              <Path
+                d={`M28 ${lidOuter} L64 ${lidInner} L100 ${lidOuter}`}
+                stroke={c.edge}
+                strokeWidth={3}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                fill="none"
+              />
+            </G>
+          </>
+        )}
+
+        <Path d="M58 63 L70 63 L64 73 Z" fill={c.ash} />
+
+        {/* the card - lifts a little when pleased */}
+        <G transform={`translate(0 ${happy ? -6 : 0}) rotate(-12 88 98)`}>
+          <Rect x={74} y={88} width={28} height={20} rx={4} fill={c.volt} />
+          <Rect x={79} y={94} width={14} height={2.5} rx={1.25} fill={c.ink} />
+          <Rect x={79} y={100} width={9} height={2.5} rx={1.25} fill={c.ink} />
+        </G>
+
+        <Rect x={46} y={112} width={13} height={8} rx={4} fill={c.ash} />
+        <Rect x={69} y={112} width={13} height={8} rx={4} fill={c.ash} />
+      </Svg>
     </Animated.View>
   );
 }
-
-const styles = StyleSheet.create({
-  body: {
-    backgroundColor: colors.accent,
-    alignSelf: 'center',
-    shadowColor: colors.accent,
-    shadowOpacity: 0.35,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: 8 },
-  },
-  rule: {
-    position: 'absolute',
-    left: '18%',
-    backgroundColor: 'rgba(11,11,15,0.22)',
-    borderRadius: 2,
-  },
-  face: { position: 'absolute', left: 0, right: 0, alignItems: 'center' },
-  eyes: { flexDirection: 'row', alignItems: 'center' },
-  eye: { backgroundColor: colors.accentInk },
-  eyeHappy: { borderColor: colors.accentInk, backgroundColor: 'transparent' },
-  mouth: { backgroundColor: colors.accentInk },
-  mouthO: { borderWidth: 2.5, borderColor: colors.accentInk, backgroundColor: 'transparent' },
-  mouthHappy: { backgroundColor: colors.accentInk },
-  mouthSad: { borderColor: colors.accentInk, backgroundColor: 'transparent' },
-});

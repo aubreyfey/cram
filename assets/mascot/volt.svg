@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128" fill="none">
+  <!-- Volt - Cram's owl. Default "focused study" pose. Flat vector, no text,
+       transparent background. Palette matches src/theme.js. -->
+  <defs>
+    <path id="volt-body" d="M64 20 C88 20 104 40 104 72 C104 100 88 118 64 118 C40 118 24 100 24 72 C24 40 40 20 64 20 Z"/>
+    <clipPath id="volt-clip"><use href="#volt-body"/></clipPath>
+  </defs>
+
+  <!-- ear tufts -->
+  <path d="M34 36 L42 10 L58 30 Z" fill="#262630" stroke="#3B3B49" stroke-width="3" stroke-linejoin="round"/>
+  <path d="M94 36 L86 10 L70 30 Z" fill="#262630" stroke="#3B3B49" stroke-width="3" stroke-linejoin="round"/>
+
+  <!-- body -->
+  <use href="#volt-body" fill="#262630" stroke="#3B3B49" stroke-width="3"/>
+
+  <!-- wings + belly, kept inside the silhouette -->
+  <g clip-path="url(#volt-clip)">
+    <path d="M32 58 C24 76 26 98 38 112 C45 98 45 76 32 58 Z" fill="#1C1C24"/>
+    <path d="M96 58 C104 76 102 98 90 112 C83 98 83 76 96 58 Z" fill="#1C1C24"/>
+    <rect x="48" y="76" width="32" height="32" rx="16" fill="#30303C"/>
+  </g>
+
+  <!-- eyes: bone disc, volt iris, ink pupil, one catchlight -->
+  <circle cx="47" cy="52" r="17" fill="#F5F5F7"/>
+  <circle cx="81" cy="52" r="17" fill="#F5F5F7"/>
+  <circle cx="47" cy="52" r="10" fill="#D4FF3F"/>
+  <circle cx="81" cy="52" r="10" fill="#D4FF3F"/>
+  <circle cx="47" cy="52" r="5" fill="#0B0B0F"/>
+  <circle cx="81" cy="52" r="5" fill="#0B0B0F"/>
+  <circle cx="44.5" cy="49.5" r="2.2" fill="#F5F5F7"/>
+  <circle cx="78.5" cy="49.5" r="2.2" fill="#F5F5F7"/>
+
+  <!-- focused lids: a straight cut, lower toward the centre -->
+  <g clip-path="url(#volt-clip)">
+    <path d="M26 41 L64 47 L64 28 L26 28 Z" fill="#262630"/>
+    <path d="M102 41 L64 47 L64 28 L102 28 Z" fill="#262630"/>
+    <path d="M28 41 L64 47 L100 41" stroke="#3B3B49" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+
+  <!-- beak -->
+  <path d="M58 63 L70 63 L64 73 Z" fill="#8E8E9A"/>
+
+  <!-- the card it is holding -->
+  <g transform="rotate(-12 88 98)">
+    <rect x="74" y="88" width="28" height="20" rx="4" fill="#D4FF3F"/>
+    <rect x="79" y="94" width="14" height="2.5" rx="1.25" fill="#0B0B0F"/>
+    <rect x="79" y="100" width="9" height="2.5" rx="1.25" fill="#0B0B0F"/>
+  </g>
+
+  <!-- feet -->
+  <rect x="46" y="112" width="13" height="8" rx="4" fill="#8E8E9A"/>
+  <rect x="69" y="112" width="13" height="8" rx="4" fill="#8E8E9A"/>
+</svg>

@@ -47,6 +47,7 @@ src/screens/
   PaywallScreen.js         three plans
 src/components/
   Flashcard.js             tap to flip, swipe to rate
+  Mascot.js                Volt, the owl - four moods, react-native-svg
   CardEditor.js            fix a card the model got wrong
   ErrorBoundary.js         crash screen with a way back
   PrimaryButton.js
@@ -56,6 +57,7 @@ src/lib/
   srs.js                   trimmed SM-2 scheduling
   share.js                 deck -> plain text for the share sheet
   entitlements.js          plans + the RevenueCat seam  ← see TODO
+assets/mascot/             Volt as clean SVG: transparent + app-icon variant
 public/                    terms + privacy, copied into the web build
 server/api/generate.js     the Claude call
 ```
@@ -95,7 +97,7 @@ server and never bundled into the app, so nobody can pull it out of the IPA.
 Everyone who isn't admin sees the free tier until they buy or start the trial —
 which still needs step 1.
 
-**3. Icon and splash** are still the Expo placeholders in `assets/`.
+**3. Icon and splash** are rendered from `assets/mascot/volt-icon.svg` and `volt.svg`. If the mascot changes, re-export the PNGs in `assets/` (1024px, the iOS icon with no alpha).
 
 **4. Terms and privacy pages** are in `public/` and ship with the web build, so
 they are live wherever Vercel deploys it. Set `app.json` → `extra.siteUrl` to

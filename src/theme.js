@@ -52,3 +52,16 @@ export const shadow = {
     elevation: 12,
   },
 };
+
+// Volt, the mascot. Slate body in the surface family, bone eye discs, and the
+// accent spent only on the irises and the card it holds. See assets/mascot.
+export const mascot = {
+  body: '#262630',
+  edge: '#3B3B49',
+  wing: '#1C1C24',
+  belly: '#30303C',
+  bone: colors.text,
+  ash: colors.textDim,
+  ink: colors.bg,
+  volt: colors.accent,
+};
