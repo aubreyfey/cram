@@ -164,6 +164,12 @@ just "more of the same". The check lives in `canUseDocuments()` in
   screen, so the whole app can be exercised on a machine with no API key.
 - **Edit** in the study header fixes the card in front of you, or deletes it.
   The model misreads a number now and then; this is cheaper than a new scan.
+- **Write or paste - free, no server.** Import → "Write or paste", or "New"
+  in the library. Type cards, or paste notes / a Quizlet export / a deck a
+  friend shared from Cram - `Q:`/`A:` lines, tabs and `term - definition`
+  are all recognised, with a live "N cards found" count. Costs nothing per
+  user and is never gated, which is the point: one student scans, the rest
+  of the study group pastes.
 - **Review before you send.** Every photo - shutter or library - lands on a
   review grid first. Shoot a whole lecture slide by slide, pick ten
   screenshots at once from Photos, drop a blurry one, then make one deck from

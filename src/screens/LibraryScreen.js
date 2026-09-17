@@ -14,6 +14,7 @@ export default function LibraryScreen({
   onOpen,
   onReviewDue,
   onAddPages,
+  onCreate,
   onClose,
   onDelete,
   isPro,
@@ -52,9 +53,16 @@ export default function LibraryScreen({
             </View>
           ) : null}
         </View>
-        <Pressable onPress={onClose} hitSlop={16}>
-          <Text style={styles.close}>Camera</Text>
-        </Pressable>
+        <View style={styles.headerActions}>
+          {onCreate ? (
+            <Pressable onPress={onCreate} hitSlop={16}>
+              <Text style={styles.newLink}>New</Text>
+            </Pressable>
+          ) : null}
+          <Pressable onPress={onClose} hitSlop={16}>
+            <Text style={styles.close}>Camera</Text>
+          </Pressable>
+        </View>
       </View>
 
       {/* Only shown with two or more decks - with one, tapping the deck is
@@ -90,14 +98,22 @@ export default function LibraryScreen({
             <Mascot mood="idle" size={80} style={{ marginBottom: space(5) }} />
             <Text style={styles.emptyTitle}>Nothing here yet</Text>
             <Text style={styles.emptyBody}>
-              Point the camera at a slide or a page of notes to make your first deck.
+              Point the camera at a slide or a page of notes - or write the cards yourself.
             </Text>
+            {onCreate ? (
+              <PrimaryButton
+                label="Write your own"
+                variant="solid"
+                onPress={onCreate}
+                style={{ marginTop: space(8), alignSelf: 'stretch' }}
+              />
+            ) : null}
             {onLoadSample ? (
               <PrimaryButton
                 label="Load a sample deck"
                 variant="ghost"
                 onPress={onLoadSample}
-                style={{ marginTop: space(8) }}
+                style={{ marginTop: space(3), alignSelf: 'stretch' }}
               />
             ) : null}
           </View>
@@ -152,6 +168,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.accent,
   },
   streakText: { ...type.mono, fontSize: 10, color: colors.accentInk },
+  headerActions: { flexDirection: 'row', alignItems: 'center', gap: space(5) },
+  newLink: { ...type.body, fontWeight: '700', color: colors.textDim },
   close: { ...type.body, fontWeight: '700', color: colors.accent },
   due: {
     flexDirection: 'row',

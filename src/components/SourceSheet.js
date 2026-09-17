@@ -38,6 +38,14 @@ const OPTIONS = [
     pro: true,
     subtitle: 'Lecture slides, a chapter, a past paper',
   },
+  {
+    key: 'write',
+    glyph: '􀈎',
+    fallback: '✎',
+    title: 'Write or paste',
+    free: true,
+    subtitle: 'Type cards, or paste notes or a shared deck',
+  },
 ];
 
 export default function SourceSheet({ visible, isPro, onPick, onClose }) {
@@ -122,6 +130,10 @@ export default function SourceSheet({ visible, isPro, onPick, onClose }) {
                 {opt.pro && !isPro ? (
                   <View style={styles.proTag}>
                     <Text style={styles.proTagText}>PRO</Text>
+                  </View>
+                ) : opt.free && !isPro ? (
+                  <View style={[styles.proTag, { borderColor: colors.textFaint }]}>
+                    <Text style={[styles.proTagText, { color: colors.textDim }]}>FREE</Text>
                   </View>
                 ) : (
                   <Text style={styles.chevron}>›</Text>

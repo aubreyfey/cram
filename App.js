@@ -14,6 +14,7 @@ import StudyScreen from './src/screens/StudyScreen';
 import LibraryScreen from './src/screens/LibraryScreen';
 import PaywallScreen from './src/screens/PaywallScreen';
 import ReviewScreen from './src/screens/ReviewScreen';
+import DeckEditorScreen from './src/screens/DeckEditorScreen';
 
 import { MAX_PAGES, generateDeck } from './src/lib/api';
 import { pickDocument, pickFromLibrary } from './src/lib/pickers';
@@ -136,6 +137,10 @@ export default function App() {
     async (kind) => {
       setSheetOpen(false);
       if (kind === 'camera') return;
+      if (kind === 'write') {
+        setScreen('create');
+        return;
+      }
 
       if (kind === 'files' && !(await canUseDocuments())) {
         setPaywallReason('documents');
@@ -156,6 +161,13 @@ export default function App() {
     },
     [start, addPages],
   );
+
+  // Manual decks cost nothing and count against nothing.
+  const saveManualDeck = useCallback(async (deck) => {
+    setDecks(await saveDeck(deck));
+    setActiveDeck(deck);
+    setScreen('study');
+  }, []);
 
   const generateFromPages = useCallback(() => {
     if (!pages.length) return;
@@ -280,6 +292,12 @@ export default function App() {
               </Screen>
             )}
 
+            {screen === 'create' && (
+              <Screen preset="modal">
+                <DeckEditorScreen onSave={saveManualDeck} onClose={() => setScreen('camera')} />
+              </Screen>
+            )}
+
             {screen === 'review' && (
               <Screen preset="push">
                 <ReviewScreen
@@ -336,6 +354,7 @@ export default function App() {
                   }}
                   onReviewDue={reviewDue}
                   onAddPages={appendToDeck}
+                  onCreate={() => setScreen('create')}
                   onDelete={async (id) => setDecks(await deleteDeck(id))}
                   onLoadSample={async () => {
                     setDecks(await saveDeck(makeSampleDeck()));
