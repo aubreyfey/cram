@@ -19,6 +19,7 @@ import DeckEditorScreen from './src/screens/DeckEditorScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
 import FeedbackScreen from './src/screens/FeedbackScreen';
 import ExamEditorScreen from './src/screens/ExamEditorScreen';
+import DocumentScreen from './src/screens/DocumentScreen';
 
 import { MAX_PAGES, generateDeck } from './src/lib/api';
 import { pickDocument, pickFromLibrary } from './src/lib/pickers';
@@ -40,6 +41,7 @@ import { canUseDocuments, checkQuota, disableAdmin, isSubscribed } from './src/l
 import { makeSampleDeck } from './src/lib/sampleDeck';
 import { mergeDecks, readDeckFile } from './src/lib/backup';
 import { configureNotifications, rearmNag } from './src/lib/reminders';
+import { dropSource, keepSource } from './src/lib/sources';
 import { initMonitoring, wrapRoot } from './src/lib/monitoring';
 import { colors } from './src/theme';
 
@@ -59,6 +61,9 @@ function App() {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [adminOpen, setAdminOpen] = useState(false);
   const [renaming, setRenaming] = useState(null);
+  // A document on screen: { source, back } - back is where Done returns to,
+  // and whether "Make cards" is offered (only when previewing before a scan).
+  const [doc, setDoc] = useState(null);
   const [streak, setStreak] = useState(0);
   const [exams, setExams] = useState([]);
   const [editingExam, setEditingExam] = useState(null);
@@ -111,9 +116,14 @@ function App() {
 
         // Appending keeps the original deck's title and schedule; the new
         // cards simply arrive unstudied and are due immediately.
-        const deck = appendTo
+        let deck = appendTo
           ? { ...appendTo, cards: [...appendTo.cards, ...fresh.cards] }
           : fresh;
+        // A deck made from a PDF keeps a copy, so it can be opened again.
+        if (src.kind === 'pdf' && !deck.source) {
+          const source = await keepSource(deck.id, src);
+          if (source) deck = { ...deck, source };
+        }
 
         setDecks(await saveDeck(deck));
         // Recorded for everyone, not just free users - subscribers don't meter
@@ -198,14 +208,11 @@ function App() {
           setScreen('library');
           return;
         }
-        // PDFs cost the most of any request, so they are the one Pro gate.
+        // A PDF opens first - reading it is free. Making cards from it is
+        // the one Pro gate, and it sits on the button, not the picker.
         if (picked.kind === 'pdf') {
-          if (!(await canUseDocuments())) {
-            setPaywallReason('documents');
-            setScreen('paywall');
-            return;
-          }
-          start(picked);
+          setDoc({ source: picked, back: 'camera', canGenerate: true });
+          setScreen('document');
           return;
         }
         addPages(picked.pages);
@@ -215,6 +222,24 @@ function App() {
     },
     [start, addPages, importDecks],
   );
+
+  const makeCardsFromDoc = useCallback(async () => {
+    if (!doc?.source) return;
+    if (!(await canUseDocuments())) {
+      setPaywallReason('documents');
+      setScreen('paywall');
+      return;
+    }
+    const src = doc.source;
+    setDoc(null);
+    start(src);
+  }, [doc, start]);
+
+  const openSource = useCallback((deck, back) => {
+    if (!deck?.source) return;
+    setDoc({ source: deck.source, back, canGenerate: false });
+    setScreen('document');
+  }, []);
 
   const renameDeck = useCallback(async (deck) => {
     setDecks(await saveDeck(deck));
@@ -376,6 +401,20 @@ function App() {
               </Screen>
             )}
 
+            {screen === 'document' && doc ? (
+              <Screen preset="modal">
+                <DocumentScreen
+                  source={doc.source}
+                  onMakeCards={doc.canGenerate ? makeCardsFromDoc : undefined}
+                  onClose={() => {
+                    const back = doc.back;
+                    setDoc(null);
+                    setScreen(back);
+                  }}
+                />
+              </Screen>
+            ) : null}
+
             {screen === 'exam' && (
               <Screen preset="modal">
                 <ExamEditorScreen
@@ -493,6 +532,7 @@ function App() {
                   }}
                   onReviewDue={reviewDue}
                   onRename={(d) => setRenaming(d)}
+                  onOpenSource={(d) => openSource(d, 'library')}
                   onAddPages={appendToDeck}
                   onCreate={() => setScreen('create')}
                   onSettings={() => setScreen('settings')}
@@ -506,7 +546,10 @@ function App() {
                     setEditingExam(e);
                     setScreen('exam');
                   }}
-                  onDelete={async (id) => setDecks(await deleteDeck(id))}
+                  onDelete={async (id) => {
+                    await dropSource(decks.find((d) => d.id === id));
+                    setDecks(await deleteDeck(id));
+                  }}
                   onLoadSample={async () => {
                     setDecks(await saveDeck(makeSampleDeck()));
                   }}

@@ -29,6 +29,7 @@ export default function LibraryScreen({
   onReviewDue,
   onAddPages,
   onRename,
+  onOpenSource,
   onCreate,
   onSettings,
   onClose,
@@ -52,6 +53,7 @@ export default function LibraryScreen({
   // is the most this needs, and it matches the delete confirm already here.
   const deckActions = (deck) => {
     alert(deck.title, null, [
+      ...(deck.source ? [{ text: 'Open the PDF', onPress: () => onOpenSource(deck) }] : []),
       { text: 'Rename', onPress: () => onRename(deck) },
       { text: 'Add pages to this deck', onPress: () => onAddPages(deck) },
       { text: 'Share', onPress: () => shareDeck(deck) },
@@ -63,12 +65,12 @@ export default function LibraryScreen({
   return (
     <View style={[styles.root, { paddingTop: insets.top + space(2) }]}>
       <View style={styles.header}>
-        <View style={styles.titleRow}>
+        <View style={{ flex: 1 }}>
           <Text style={styles.title}>Your decks</Text>
           {streak > 1 ? (
-            <Animated.View entering={ZoomIn.springify().damping(12).delay(200)} style={styles.streak}>
-              <Text style={styles.streakText}>{streak}-DAY STREAK</Text>
-            </Animated.View>
+            <Animated.Text entering={ZoomIn.springify().damping(12).delay(200)} style={styles.streakLine}>
+              {streak}-DAY STREAK
+            </Animated.Text>
           ) : null}
         </View>
         <View style={styles.headerActions}>
@@ -88,66 +90,70 @@ export default function LibraryScreen({
         </View>
       </View>
 
-      {/* Exams first: this is the part of the app that knows what the
-          week looks like. Empty state is a single quiet line - most people
-          add their first exam after their first deck, not before. */}
-      <View style={styles.week}>
-        <View style={styles.weekHead}>
-          <Text style={styles.weekTitle}>THIS WEEK</Text>
-          {onAddExam ? (
-            <Pressable onPress={onAddExam} hitSlop={12}>
-              <Text style={styles.weekAdd}>+ Exam</Text>
-            </Pressable>
-          ) : null}
-        </View>
-        {soon.length ? (
-          soon.map((e, i) => (
-            <ExamCard
-              key={e.id}
-              exam={e}
-              decks={decks}
-              index={i}
-              onPress={() => onOpenExam(e)}
-              onLongPress={() => onEditExam(e)}
-            />
-          ))
-        ) : (
-          <Pressable onPress={onAddExam} style={styles.weekEmpty}>
-            <Text style={styles.weekEmptyText}>
-              Got an exam coming? Add it and Cram counts down and keeps the right decks in front of you.
-            </Text>
-          </Pressable>
-        )}
-      </View>
-
-      {/* Only shown with two or more decks - with one, tapping the deck is
-          the same thing and the button would just be noise. */}
-      {decks.length > 1 && totalDue > 0 ? (
-        <Pressable style={styles.due} onPress={onReviewDue}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.dueTitle}>Review what's due</Text>
-            <Text style={styles.dueBody}>
-              {totalDue} {totalDue === 1 ? 'card' : 'cards'} across {decks.length} decks
-            </Text>
-          </View>
-          <Text style={styles.dueCta}>Start</Text>
-        </Pressable>
-      ) : null}
-
-      {!isPro ? (
-        <Pressable style={styles.upsell} onPress={onUpgrade}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.upsellTitle}>Unlimited cards</Text>
-            <Text style={styles.upsellBody}>Semester Pass covers you to finals</Text>
-          </View>
-          <Text style={styles.upsellCta}>$19.99</Text>
-        </Pressable>
-      ) : null}
-
       <FlatList
         data={decks}
         keyExtractor={(d) => d.id}
-        contentContainerStyle={{ padding: space(6), paddingBottom: insets.bottom + space(10) }}
+        contentContainerStyle={{ paddingBottom: insets.bottom + space(10) }}
+        ListHeaderComponent={
+          <View>
+          {/* Exams first: this is the part of the app that knows what the
+              week looks like. Empty state is a single quiet line - most people
+              add their first exam after their first deck, not before. */}
+          <View style={styles.week}>
+            <View style={styles.weekHead}>
+              <Text style={styles.weekTitle}>THIS WEEK</Text>
+              {onAddExam ? (
+                <Pressable onPress={onAddExam} hitSlop={12}>
+                  <Text style={styles.weekAdd}>+ Exam</Text>
+                </Pressable>
+              ) : null}
+            </View>
+            {soon.length ? (
+              soon.map((e, i) => (
+                <ExamCard
+                  key={e.id}
+                  exam={e}
+                  decks={decks}
+                  index={i}
+                  onPress={() => onOpenExam(e)}
+                  onLongPress={() => onEditExam(e)}
+                />
+              ))
+            ) : (
+              <Pressable onPress={onAddExam} style={styles.weekEmpty}>
+                <Text style={styles.weekEmptyText}>
+                  Got an exam coming? Add it and Cram counts down and keeps the right decks in front of you.
+                </Text>
+              </Pressable>
+            )}
+          </View>
+
+          {/* Only shown with two or more decks - with one, tapping the deck is
+              the same thing and the button would just be noise. */}
+          {decks.length > 1 && totalDue > 0 ? (
+            <Pressable style={styles.due} onPress={onReviewDue}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.dueTitle}>Review what's due</Text>
+                <Text style={styles.dueBody}>
+                  {totalDue} {totalDue === 1 ? 'card' : 'cards'} across {decks.length} decks
+                </Text>
+              </View>
+              <Text style={styles.dueCta}>Start</Text>
+            </Pressable>
+          ) : null}
+
+          {!isPro ? (
+            <Pressable style={styles.upsell} onPress={onUpgrade}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.upsellTitle}>Unlimited cards</Text>
+                <Text style={styles.upsellBody}>Semester Pass covers you to finals</Text>
+              </View>
+              <Text style={styles.upsellCta}>$19.99</Text>
+            </Pressable>
+          ) : null}
+            {decks.length ? <Text style={styles.sectionTitle}>YOUR DECKS</Text> : null}
+          </View>
+        }
         ListEmptyComponent={
           <View style={styles.empty}>
             <Mascot mood="idle" size={80} style={{ marginBottom: space(5) }} />
@@ -194,6 +200,7 @@ export default function LibraryScreen({
                   <ProgressFill pct={pct} delay={index * 45 + 200} />
                 </View>
                 <Text style={styles.meta}>
+                  {item.source ? <Text style={styles.metaTag}>PDF  ·  </Text> : null}
                   {item.cards.length} cards
                   {due > 0 ? <Text style={styles.metaDue}>  ·  {due} due</Text> : null}
                 </Text>
@@ -225,16 +232,16 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: space(6),
   },
-  titleRow: { flexDirection: 'row', alignItems: 'center', gap: space(3), flex: 1 },
-  title: { ...type.title, color: colors.text },
-  streak: {
-    paddingHorizontal: space(2.5),
-    paddingVertical: space(1),
-    borderRadius: radius.pill,
-    backgroundColor: colors.accent,
+  title: { ...type.title, fontSize: 26, color: colors.text },
+  streakLine: { ...type.mono, fontSize: 10, color: colors.accent, marginTop: 2 },
+  sectionTitle: {
+    ...type.mono,
+    color: colors.textFaint,
+    paddingHorizontal: space(6),
+    marginTop: space(7),
+    marginBottom: space(3),
   },
-  streakText: { ...type.mono, fontSize: 10, color: colors.accentInk },
-  headerActions: { flexDirection: 'row', alignItems: 'center', gap: space(5) },
+  headerActions: { flexDirection: 'row', alignItems: 'center', gap: space(4), flexShrink: 0 },
   newLink: { ...type.body, fontWeight: '700', color: colors.textDim },
   gear: { fontSize: 20, color: colors.textDim },
   close: { ...type.body, fontWeight: '700', color: colors.accent },
@@ -285,6 +292,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     borderRadius: radius.lg,
     padding: space(5),
+    marginHorizontal: space(6),
     marginBottom: space(3),
     borderWidth: 1,
     borderColor: colors.line,
@@ -303,7 +311,8 @@ const styles = StyleSheet.create({
   fill: { height: 3, backgroundColor: colors.accent },
   meta: { ...type.body, fontSize: 13, color: colors.textDim, marginTop: space(3) },
   metaDue: { color: colors.accent, fontWeight: '700' },
-  empty: { alignItems: 'center', paddingTop: space(24), paddingHorizontal: space(8) },
+  metaTag: { ...type.mono, fontSize: 11, color: colors.textFaint },
+  empty: { alignItems: 'center', paddingTop: space(16), paddingHorizontal: space(10) },
   emptyTitle: { ...type.title, fontSize: 20, color: colors.text },
   emptyBody: {
     ...type.body,

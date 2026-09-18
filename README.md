@@ -212,6 +212,11 @@ just "more of the same". The check lives in `canUseDocuments()` in
   the deck-finished screen. Goes to `/api/feedback` (GitHub issues if
   configured, server logs otherwise); with no server it falls back to email
   via `extra.feedbackEmail` in app.json - set that before launch.
+- **Read the PDF first.** Picking a PDF opens it in the app before anything
+  is sent - reading is free; "Make cards" underneath is where the Pro gate
+  sits. A deck made from a PDF keeps a copy (documents directory, deleted
+  with the deck), so long-press → "Open the PDF" brings it back. iOS and web
+  render inline; Android hands off to the phone's PDF viewer.
 - **Review before you send.** Every photo - shutter or library - lands on a
   review grid first. Shoot a whole lecture slide by slide, pick ten
   screenshots at once from Photos, drop a blurry one, then make one deck from
