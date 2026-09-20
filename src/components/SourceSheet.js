@@ -47,6 +47,13 @@ const OPTIONS = [
     subtitle: 'Type cards, or paste notes or a shared deck',
   },
   {
+    key: 'youtube',
+    glyph: '􀊵',
+    fallback: '▶',
+    title: 'YouTube video',
+    subtitle: 'Watch it here; cards from the captions',
+  },
+  {
     key: 'talk',
     glyph: '􀊱',
     fallback: '●',

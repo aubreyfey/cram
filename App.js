@@ -7,6 +7,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import ErrorBoundary from './src/components/ErrorBoundary';
 import AdminSheet from './src/components/AdminSheet';
 import RenameSheet from './src/components/RenameSheet';
+import LinkSheet from './src/components/LinkSheet';
 import Screen from './src/components/Screen';
 import SourceSheet from './src/components/SourceSheet';
 import CameraScreen from './src/screens/CameraScreen';
@@ -24,6 +25,7 @@ import BoardScreen from './src/screens/BoardScreen';
 import ExamScreen from './src/screens/ExamScreen';
 import TalkScreen from './src/screens/TalkScreen';
 import TalksScreen from './src/screens/TalksScreen';
+import VideoScreen from './src/screens/VideoScreen';
 
 import { MAX_PAGES, generateDeck, generateGuide } from './src/lib/api';
 import { pickDocument, pickFromLibrary } from './src/lib/pickers';
@@ -69,6 +71,9 @@ function App() {
   // A document on screen: { source, back } - back is where Done returns to,
   // and whether "Make cards" is offered (only when previewing before a scan).
   const [doc, setDoc] = useState(null);
+  const [linkOpen, setLinkOpen] = useState(false);
+  // { video: { videoId, url?, title? }, back, canGenerate }
+  const [vid, setVid] = useState(null);
   const [streak, setStreak] = useState(0);
   const [exams, setExams] = useState([]);
   const [editingExam, setEditingExam] = useState(null);
@@ -131,10 +136,13 @@ function App() {
         let deck = appendTo
           ? { ...appendTo, cards: [...appendTo.cards, ...fresh.cards] }
           : fresh;
-        // A deck made from a PDF keeps a copy, so it can be opened again.
+        // A deck made from a PDF keeps a copy, so it can be opened again; a
+        // deck made from a video keeps the link.
         if (src.kind === 'pdf' && !deck.source) {
           const source = await keepSource(deck.id, src);
           if (source) deck = { ...deck, source };
+        } else if (src.source && !deck.source) {
+          deck = { ...deck, source: src.source };
         }
 
         setDecks(await saveDeck(deck));
@@ -210,6 +218,10 @@ function App() {
         openTalk({ back: 'camera' });
         return;
       }
+      if (kind === 'youtube') {
+        setLinkOpen(true);
+        return;
+      }
 
       try {
         const picked =
@@ -253,6 +265,11 @@ function App() {
 
   const openSource = useCallback((deck, back) => {
     if (!deck?.source) return;
+    if (deck.source.kind === 'youtube') {
+      setVid({ video: deck.source, back, canGenerate: false });
+      setScreen('video');
+      return;
+    }
     setDoc({ source: deck.source, back, canGenerate: false });
     setScreen('document');
   }, []);
@@ -447,6 +464,27 @@ function App() {
                 />
               </Screen>
             )}
+
+            {screen === 'video' && vid ? (
+              <Screen preset="modal">
+                <VideoScreen
+                  video={vid.video}
+                  canGenerate={vid.canGenerate}
+                  onMakeCards={(src) => {
+                    const back = vid.back;
+                    setVid(null);
+                    start(src);
+                    // start() moves to 'generating'; a failed request's Back
+                    // returns to the camera/review as usual.
+                  }}
+                  onClose={() => {
+                    const back = vid.back;
+                    setVid(null);
+                    setScreen(back);
+                  }}
+                />
+              </Screen>
+            ) : null}
 
             {screen === 'document' && doc ? (
               <Screen preset="modal">
@@ -697,6 +735,16 @@ function App() {
               isPro={pro}
               onPick={handlePick}
               onClose={() => setSheetOpen(false)}
+            />
+
+            <LinkSheet
+              visible={linkOpen}
+              onClose={() => setLinkOpen(false)}
+              onSubmit={(video) => {
+                setLinkOpen(false);
+                setVid({ video, back: 'camera', canGenerate: true });
+                setScreen('video');
+              }}
             />
 
             <RenameSheet

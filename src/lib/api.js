@@ -244,3 +244,43 @@ export async function generateGuide({ title, cards }, { tier = 'free', signal } 
   if (!res.ok) throw new ApiError("Couldn't write a guide from those cards. Try again.", 'server');
   return await res.json();
 }
+
+// Captions for a YouTube link. Resolves even when YouTube refuses: the
+// result then has transcript null and a reason, and the screen falls back
+// to pasting the transcript. Only a bad link or an unreachable server throws.
+export async function fetchYouTube(url) {
+  let res;
+  try {
+    res = await fetch(`${BASE_URL}/api/youtube`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-cram-key': Constants.expoConfig?.extra?.appKey ?? '',
+      },
+      body: JSON.stringify({ url }),
+    });
+  } catch {
+    throw new ApiError(
+      __DEV__ ? `Can't reach the Cram API at ${BASE_URL}.` : "Couldn't reach Cram right now.",
+      'network',
+    );
+  }
+  if (res.status === 400) throw new ApiError("That doesn't look like a YouTube link.", 'bad_url');
+  if (res.status === 429) throw new ApiError('Give it a minute.', 'rate_limit');
+  const data = await res.json().catch(() => ({}));
+  if (res.ok) return data;
+  return { videoId: data.videoId ?? null, title: data.title ?? null, transcript: null, reason: data.error || 'fetch_failed' };
+}
+
+// Recognises a YouTube link on the client so the video can be shown even
+// when the server is down.
+export function youtubeId(input) {
+  if (typeof input !== 'string') return null;
+  const s = input.trim();
+  if (/^[\w-]{11}$/.test(s)) return s;
+  const m =
+    s.match(/youtu\.be\/([\w-]{11})/) ||
+    s.match(/[?&]v=([\w-]{11})/) ||
+    s.match(/\/(?:shorts|embed|live|v)\/([\w-]{11})/);
+  return m ? m[1] : null;
+}

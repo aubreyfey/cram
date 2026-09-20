@@ -55,7 +55,9 @@ export default function LibraryScreen({
   // is the most this needs, and it matches the delete confirm already here.
   const deckActions = (deck) => {
     alert(deck.title, null, [
-      ...(deck.source ? [{ text: 'Open the PDF', onPress: () => onOpenSource(deck) }] : []),
+      ...(deck.source
+        ? [{ text: deck.source.kind === 'youtube' ? 'Open the video' : 'Open the PDF', onPress: () => onOpenSource(deck) }]
+        : []),
       { text: 'Rename', onPress: () => onRename(deck) },
       { text: 'Add pages to this deck', onPress: () => onAddPages(deck) },
       { text: 'Share', onPress: () => shareDeck(deck) },
@@ -213,7 +215,9 @@ export default function LibraryScreen({
                   <ProgressFill pct={pct} delay={index * 45 + 200} />
                 </View>
                 <Text style={styles.meta}>
-                  {item.source ? <Text style={styles.metaTag}>PDF  ·  </Text> : null}
+                  {item.source ? (
+                    <Text style={styles.metaTag}>{item.source.kind === 'youtube' ? 'VIDEO' : 'PDF'}  ·  </Text>
+                  ) : null}
                   {item.cards.length} cards
                   {due > 0 ? <Text style={styles.metaDue}>  ·  {due} due</Text> : null}
                 </Text>

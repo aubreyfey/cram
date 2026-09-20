@@ -93,11 +93,12 @@ export default function GeneratingScreen({ source, error, onRetry, onCancel, onU
           </View>
         ) : null}
         {isText ? (
-          // Pasted notes: show the opening lines, so it's clearly the right text.
+          // Pasted notes: show the opening lines, so it's clearly the right
+          // text. A video shows its title instead.
           <View style={styles.docStand}>
-            <Text style={styles.docGlyph}>✎</Text>
+            <Text style={styles.docGlyph}>{source?.source?.kind === 'youtube' ? '▶' : '✎'}</Text>
             <Text style={styles.docName} numberOfLines={6}>
-              {source?.text}
+              {source?.source?.kind === 'youtube' ? source.source.title || 'YouTube video' : source?.text}
             </Text>
           </View>
         ) : null}

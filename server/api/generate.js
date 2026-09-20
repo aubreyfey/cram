@@ -24,9 +24,9 @@ const ACCEPTED = {
 // past that the upload alone takes longer than anyone will wait.
 const MAX_PAGES = 20;
 const MAX_TOTAL_BYTES = 24 * 1024 * 1024;
-// Pasted notes. 20k characters is a long chapter summary; past that the
-// student should split it, and the model would start skimming anyway.
-const MAX_TEXT_CHARS = 20000;
+// Pasted notes or a video transcript. 60k characters is about an hour of
+// speech; past that the student should split it.
+const MAX_TEXT_CHARS = 60000;
 
 const DeckSchema = z.object({
   title: z.string().describe('Short deck name, 2-5 words, drawn from the content'),

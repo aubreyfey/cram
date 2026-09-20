@@ -241,6 +241,13 @@ just "more of the same". The check lives in `canUseDocuments()` in
   4. Change a status from the dashboard (Table editor → feedback → status,
      note), or `select set_status('<id>', 'planned', 'Coming in October');`
      in the SQL editor. Post an update by adding a row to `updates`.
+- **YouTube video.** Import → "YouTube video", paste a link. The video plays
+  inside Cram; the server asks YouTube for the captions and, when it gets
+  them, one tap makes cards. YouTube refuses that request often (there is no
+  official way to read captions on other people's videos, and servers are
+  blocked more than phones), so the screen then shows the 30-second
+  workaround - YouTube → ⋯ → Show transcript → copy → paste - and makes the
+  cards from that. The deck keeps the video: long-press → "Open the video".
 - **Talk it out.** Import → "Talk it out", "Explain it out loud" after a deck,
   or "Talk through it" on an exam page. Record yourself explaining the
   material; the words appear as you speak (on-device speech recognition via

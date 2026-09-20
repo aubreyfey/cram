@@ -4,7 +4,8 @@ Three endpoints. `/api/generate` takes a base64 JPEG of a page, a PDF, up to
 20 JPEGs as `{ pages: [...] }`, or pasted notes as `{ text }`, and returns
 flashcards. `/api/admin` checks the admin code. `/api/feedback` takes in-app
 feedback. `/api/explain` answers "why?" for one card. `/api/guide` writes a study
-guide for an exam from its cards.
+guide for an exam from its cards. `/api/youtube` fetches a video's captions
+when YouTube allows it (best effort - the app has a paste fallback).
 
 The Anthropic API key lives here and **never** ships inside the app. That is the
 only reason this server exists.
