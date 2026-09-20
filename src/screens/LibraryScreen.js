@@ -186,7 +186,7 @@ export default function LibraryScreen({
             ) : null}
             {onLoadSample ? (
               <PrimaryButton
-                label="Load a sample deck"
+                label="Load two sample decks"
                 variant="ghost"
                 onPress={onLoadSample}
                 style={{ marginTop: space(3), alignSelf: 'stretch' }}

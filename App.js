@@ -44,7 +44,7 @@ import {
 } from './src/lib/storage';
 import { examDecks, upcoming } from './src/lib/exams';
 import { canUseDocuments, checkQuota, disableAdmin, isSubscribed } from './src/lib/entitlements';
-import { makeSampleDeck } from './src/lib/sampleDeck';
+import { makeBiologySampleDeck, makeSampleDeck } from './src/lib/sampleDeck';
 import { mergeDecks, readDeckFile } from './src/lib/backup';
 import { configureNotifications, rearmNag } from './src/lib/reminders';
 import { dropSource, keepSource } from './src/lib/sources';
@@ -706,7 +706,10 @@ function App() {
                     setDecks(await deleteDeck(id));
                   }}
                   onLoadSample={async () => {
-                    setDecks(await saveDeck(makeSampleDeck()));
+                    // Two decks, so the library looks like a real one: the
+                    // due-across-decks button and exams have something to do.
+                    await saveDeck(makeSampleDeck());
+                    setDecks(await saveDeck(makeBiologySampleDeck()));
                   }}
                   onUpgrade={() => {
                     setPaywallReason('library');

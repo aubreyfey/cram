@@ -50,3 +50,73 @@ export function makeSampleDeck() {
     })),
   };
 }
+
+// A second sample, written to the same rules from the natural-selection
+// poster used in testing - so the library has two decks (which is when the
+// cross-deck review and exams start to make sense) and the biology one
+// looks like what a scan of that page produces.
+export function makeBiologySampleDeck() {
+  const now = Date.now() + 1;
+  const cards = [
+    {
+      front: 'Why are individuals with helpful inherited traits more likely to pass them on?',
+      back: 'They survive and reproduce more, so their traits become more common in the next generation.',
+      hint: 'Survival, then reproduction, then inheritance.',
+    },
+    {
+      front: 'What does "variation" mean in the context of natural selection?',
+      back: 'Individuals within a population differ in their traits - the raw material selection acts on.',
+      hint: '',
+    },
+    {
+      front: 'What role does environmental pressure play in natural selection?',
+      back: 'The environment creates challenges; traits that help meet them are favoured.',
+      hint: '',
+    },
+    {
+      front: 'Why does the Devils Hole pupfish count as an example of natural selection?',
+      back: 'It survives in a hot desert pool with very low oxygen - a population adapted to an extreme environment.',
+      hint: '',
+    },
+    {
+      front: 'Where does the variation that natural selection acts on come from?',
+      back: 'Mutations and genetic recombination.',
+      hint: 'Two sources.',
+    },
+    {
+      front: 'Does natural selection act on individuals or on populations?',
+      back: 'It acts on individuals, but evolution happens in populations over many generations.',
+      hint: 'The key-takeaway box.',
+    },
+    {
+      front: 'How does natural selection influence biodiversity?',
+      back: 'By shaping which traits persist, it drives the diversity of species and their roles in ecosystems.',
+      hint: '',
+    },
+    {
+      front: 'Put the five steps of how natural selection works in order.',
+      back: 'Variation, environmental pressure, survival and reproduction, inheritance, evolution over time.',
+      hint: '',
+    },
+    {
+      front: 'What is the relationship between DNA, chromosomes, genes and traits?',
+      back: 'DNA is packaged into chromosomes; genes are sections of DNA; traits are what genes produce, so variation in genes gives variation in traits.',
+      hint: '',
+    },
+  ];
+
+  return {
+    id: `deck_sample_bio_${now}`,
+    title: 'Natural Selection',
+    subject: 'Biology',
+    createdAt: now,
+    isSample: true,
+    sourceKind: 'image',
+    cards: cards.map((c, i) => ({
+      id: `card_sample_bio_${now}_${i}`,
+      front: c.front,
+      back: c.back,
+      hint: c.hint || null,
+    })),
+  };
+}
