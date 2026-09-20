@@ -7,6 +7,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import * as SplashScreen from 'expo-splash-screen';
 import ErrorBoundary from './src/components/ErrorBoundary';
 import Opening from './src/components/Opening';
+import NameAsk from './src/components/NameAsk';
 import AdminSheet from './src/components/AdminSheet';
 import RenameSheet from './src/components/RenameSheet';
 import LinkSheet from './src/components/LinkSheet';
@@ -68,6 +69,7 @@ function App() {
   const [screen, setScreen] = useState('camera');
   const [opening, setOpening] = useState(true);
   const [name, setNameState] = useState('');
+  const [askName, setAskName] = useState(false);
   const [decks, setDecks] = useState([]);
   const [activeDeck, setActiveDeck] = useState(null);
   const [source, setSource] = useState(null);
@@ -113,7 +115,10 @@ function App() {
     setStreak((await getStreak()).count);
     setExams(await loadExams());
     setTalks(await loadTalks());
-    setNameState((await getProfile()).name);
+    const profile = await getProfile();
+    setNameState(profile.name);
+    // First launch only: Volt asks for a name once the opening is done.
+    if (!profile.name && !profile.asked) setAskName(true);
   }, []);
 
   useEffect(() => {
@@ -772,6 +777,15 @@ function App() {
               onSave={renameDeck}
               onClose={() => setRenaming(null)}
             />
+
+            {!opening && askName ? (
+              <NameAsk
+                onDone={(n) => {
+                  setAskName(false);
+                  if (n) setNameState(n);
+                }}
+              />
+            ) : null}
 
             {opening ? <Opening onDone={() => setOpening(false)} /> : null}
 

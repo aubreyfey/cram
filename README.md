@@ -281,7 +281,10 @@ just "more of the same". The check lives in `canUseDocuments()` in
 Worth keeping, because the design is the marketing here — the launch is a
 15-second screen recording, and if it doesn't read muted, it doesn't work.
 
-- **A name is optional.** Settings → "What should Volt call you?". Used in a
+- **A name is optional.** After the first opening, once ever, Volt asks
+  "What should I call you?" - he thinks while you type, lights up when there
+  is a name, says hi and gets out of the way; Skip is right there. Editable
+  later in Settings → "What should Volt call you?". Used in a
   few warm places - the clean-sweep line, the nag ("Aubrey. It's been five
   minutes."), the sign-off on a shared deck - and never as a gate or a form.
   Stays on the phone.
