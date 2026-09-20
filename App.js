@@ -51,6 +51,7 @@ import { mergeDecks, readDeckFile } from './src/lib/backup';
 import { configureNotifications, rearmNag } from './src/lib/reminders';
 import { dropSource, keepSource } from './src/lib/sources';
 import { deleteTalk, loadTalks, saveTalk } from './src/lib/talks';
+import { migrate } from './src/lib/migrations';
 import { initMonitoring, wrapRoot } from './src/lib/monitoring';
 import { colors } from './src/theme';
 
@@ -102,6 +103,8 @@ function App() {
   activeRef.current = activeDeck;
 
   const refresh = useCallback(async () => {
+    // Bring stored data up to this version's shape before reading any of it.
+    await migrate();
     setDecks(await loadDecks());
     setQuota(await checkQuota());
     setPro(await isSubscribed());
