@@ -173,10 +173,16 @@ just "more of the same". The check lives in `canUseDocuments()` in
 ## Studying
 
 - **This week.** Top of the library: exams with a countdown, the decks tied
-  to them, how much is learned and how much is due. Tap one to study
-  everything due for that exam (or all of it, the night before). The nearest
-  exam also sits on the camera screen. Countdown turns amber at 3 days, rose
-  at 1. Long-press to edit; a finished exam lingers a day, crossed off.
+  to them, how much is learned and how much is due. Tap one for the exam
+  page: the plan for today (how many new cards a day gets you there with a
+  day to spare, which mode fits - Quiz for a first pass, Write when it is
+  close, Blitz on the day), your weak spots (cards you have failed), and the
+  study guide. One button starts the right session. The nearest exam also
+  sits on the camera screen. Countdown turns amber at 3 days, rose at 1.
+- **Study guide.** "Write my study guide" reads every card linked to the exam
+  and writes the topics with short summaries, must-knows per topic, what
+  people mix up, and what to do the night before. Cached on the exam; it
+  offers a rewrite when the decks change. Free users get the free model.
 
 - **Four modes, one schedule.** Chips under the deck title switch between
   **Cards** (flip and rate), **Quiz** (multiple choice - the wrong answers are

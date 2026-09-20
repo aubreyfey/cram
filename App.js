@@ -21,8 +21,9 @@ import FeedbackScreen from './src/screens/FeedbackScreen';
 import ExamEditorScreen from './src/screens/ExamEditorScreen';
 import DocumentScreen from './src/screens/DocumentScreen';
 import BoardScreen from './src/screens/BoardScreen';
+import ExamScreen from './src/screens/ExamScreen';
 
-import { MAX_PAGES, generateDeck } from './src/lib/api';
+import { MAX_PAGES, generateDeck, generateGuide } from './src/lib/api';
 import { pickDocument, pickFromLibrary } from './src/lib/pickers';
 import {
   addUsage,
@@ -68,6 +69,8 @@ function App() {
   const [streak, setStreak] = useState(0);
   const [exams, setExams] = useState([]);
   const [editingExam, setEditingExam] = useState(null);
+  const [viewingExam, setViewingExam] = useState(null);
+  const [studyMode, setStudyMode] = useState('cards');
   // When set, the next scan's cards are appended to this deck instead of
   // making a new one. A lecture is thirty slides, not thirty decks.
   const [appendTo, setAppendTo] = useState(null);
@@ -295,14 +298,15 @@ function App() {
   // Study for one exam: everything due across its decks, or all of its
   // cards if nothing is due yet - the night before, "nothing due" is not
   // an answer anyone wants.
-  const openExam = useCallback(
-    (exam) => {
+  const studyExam = useCallback(
+    (exam, mode = 'cards') => {
       const linked = examDecks(exam, decks);
       if (!linked.length) {
         setEditingExam(exam);
         setScreen('exam');
         return;
       }
+      setStudyMode(mode);
       const now = Date.now();
       let cards = linked.flatMap((d) =>
         d.cards.filter((c) => !c.srs || c.srs.due <= now).map((c) => ({ ...c, deckId: d.id })),
@@ -313,6 +317,16 @@ function App() {
     },
     [decks],
   );
+
+  const writeGuide = useCallback(async (exam, plan) => {
+    const guide = await generateGuide(
+      { title: exam.title, cards: plan.cards },
+      { tier: (await isSubscribed()) ? 'pro' : 'free' },
+    );
+    const next = { ...exam, guide: { ...guide, generatedAt: Date.now(), cardCount: plan.total } };
+    setExams(await saveExam(next));
+    setViewingExam(next);
+  }, []);
 
   const nextExam = upcoming(exams).find((e) => e.date >= new Date().toISOString().slice(0, 10)) ?? null;
 
@@ -372,12 +386,18 @@ function App() {
   }, []);
 
   const backToCamera = useCallback(() => {
+    setStudyMode('cards');
+    if (viewingExam) {
+      setActiveDeck(null);
+      setScreen('examhub');
+      return;
+    }
     setActiveDeck(null);
     setAppendTo(null);
     setPages([]);
     setSource(null);
     setScreen('camera');
-  }, []);
+  }, [viewingExam]);
 
   return (
     <SafeAreaProvider>
@@ -416,6 +436,25 @@ function App() {
               </Screen>
             ) : null}
 
+            {screen === 'examhub' && viewingExam && (
+              <Screen preset="push">
+                <ExamScreen
+                  exam={exams.find((e) => e.id === viewingExam.id) ?? viewingExam}
+                  decks={decks}
+                  onStudy={studyExam}
+                  onGuide={writeGuide}
+                  onEdit={(e) => {
+                    setEditingExam(e);
+                    setScreen('exam');
+                  }}
+                  onClose={() => {
+                    setViewingExam(null);
+                    setScreen('library');
+                  }}
+                />
+              </Screen>
+            )}
+
             {screen === 'exam' && (
               <Screen preset="modal">
                 <ExamEditorScreen
@@ -424,16 +463,22 @@ function App() {
                   onSave={async (exam) => {
                     setExams(await saveExam(exam));
                     setEditingExam(null);
-                    setScreen('library');
+                    if (viewingExam?.id === exam.id) {
+                      setViewingExam(exam);
+                      setScreen('examhub');
+                    } else {
+                      setScreen('library');
+                    }
                   }}
                   onDelete={async (id) => {
                     setExams(await deleteExam(id));
                     setEditingExam(null);
+                    setViewingExam(null);
                     setScreen('library');
                   }}
                   onClose={() => {
                     setEditingExam(null);
-                    setScreen('library');
+                    setScreen(viewingExam ? 'examhub' : 'library');
                   }}
                 />
               </Screen>
@@ -516,6 +561,8 @@ function App() {
             {screen === 'study' && activeDeck && (
               <Screen preset="push">
                 <StudyScreen
+                  key={activeDeck.id}
+                  initialMode={studyMode}
                   deck={activeDeck}
                   onUpdateDeck={updateDeck}
                   onAddPages={appendToDeck}
@@ -551,7 +598,10 @@ function App() {
                     setEditingExam(null);
                     setScreen('exam');
                   }}
-                  onOpenExam={openExam}
+                  onOpenExam={(e) => {
+                    setViewingExam(e);
+                    setScreen('examhub');
+                  }}
                   onEditExam={(e) => {
                     setEditingExam(e);
                     setScreen('exam');

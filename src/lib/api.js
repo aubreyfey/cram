@@ -215,3 +215,32 @@ export async function explainCard(card, { subject, signal } = {}) {
   const { explanation } = await res.json();
   return explanation;
 }
+
+// A study guide for one exam, from its cards. The caller caches it on the
+// exam with the card count, so it is rewritten only when the decks change.
+export async function generateGuide({ title, cards }, { tier = 'free', signal } = {}) {
+  const admin = await getAdminCode();
+  let res;
+  try {
+    res = await fetch(`${BASE_URL}/api/guide`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-cram-key': Constants.expoConfig?.extra?.appKey ?? '',
+        'x-cram-tier': tier,
+        ...(admin ? { 'x-cram-admin': admin } : {}),
+      },
+      body: JSON.stringify({ title, cards }),
+      signal,
+    });
+  } catch (e) {
+    if (e.name === 'AbortError') throw e;
+    throw new ApiError(
+      __DEV__ ? `Can't reach the Cram API at ${BASE_URL}.` : "Couldn't reach Cram right now.",
+      'network',
+    );
+  }
+  if (res.status === 429) throw new ApiError('A few guides an hour is the limit. Try again later.', 'rate_limit');
+  if (!res.ok) throw new ApiError("Couldn't write a guide from those cards. Try again.", 'server');
+  return await res.json();
+}
