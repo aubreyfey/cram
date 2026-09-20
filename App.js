@@ -206,6 +206,11 @@ function App() {
     return incoming.filter((d) => !known.has(d.id)).length;
   }, []);
 
+  const openTalk = useCallback((ctx) => {
+    setTalkContext(ctx);
+    setScreen('talk');
+  }, []);
+
   const handlePick = useCallback(
     async (kind) => {
       setSheetOpen(false);
@@ -346,11 +351,6 @@ function App() {
     },
     [decks],
   );
-
-  const openTalk = useCallback((ctx) => {
-    setTalkContext(ctx);
-    setScreen('talk');
-  }, []);
 
   // A talk becomes a deck the same way pasted notes do.
   const cardsFromTalk = useCallback(
