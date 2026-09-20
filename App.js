@@ -805,7 +805,10 @@ function App() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.bg },
+  // overflow hidden: screens slide in from off-screen right; without the
+  // clip, mobile browsers measure the page as twice as wide mid-animation,
+  // zoom out to fit, and stay zoomed out.
+  root: { flex: 1, backgroundColor: colors.bg, overflow: 'hidden' },
 });
 
 export default wrapRoot(App);

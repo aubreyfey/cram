@@ -113,10 +113,8 @@ export default function SettingsScreen({ onClose, onImport, onFeedback, onNameCh
       <ScrollView contentContainerStyle={[styles.body, { paddingBottom: insets.bottom + space(10) }]}>
         <Section title="YOU">
           <View style={styles.nameRow}>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.rowLabel}>What should Volt call you?</Text>
-              <Text style={styles.rowSub}>Optional. Stays on this phone.</Text>
-            </View>
+            <Text style={styles.rowLabel}>What should Volt call you?</Text>
+            <Text style={styles.rowSub}>Optional. Stays on this phone.</Text>
             <TextInput
               style={styles.nameInput}
               value={name}
@@ -141,7 +139,7 @@ export default function SettingsScreen({ onClose, onImport, onFeedback, onNameCh
                 value={reminder.enabled}
                 onValueChange={(v) => applyReminder({ ...reminder, enabled: v })}
                 trackColor={{ true: colors.accent, false: colors.line }}
-                thumbColor={Platform.OS === 'android' ? colors.text : undefined}
+                thumbColor={colors.text}
               />
             }
           />
@@ -167,7 +165,7 @@ export default function SettingsScreen({ onClose, onImport, onFeedback, onNameCh
                 value={reminder.nag}
                 onValueChange={(v) => applyReminder({ ...reminder, nag: v })}
                 trackColor={{ true: colors.accent, false: colors.line }}
-                thumbColor={Platform.OS === 'android' ? colors.text : undefined}
+                thumbColor={colors.text}
               />
             }
           />
@@ -246,20 +244,27 @@ export default function SettingsScreen({ onClose, onImport, onFeedback, onNameCh
 }
 
 function Section({ title, children }) {
+  const items = React.Children.toArray(children).filter(Boolean);
   return (
     <View style={styles.section}>
       <Text style={styles.sectionTitle}>{title}</Text>
-      <View style={styles.group}>{children}</View>
+      <View style={styles.group}>
+        {items.map((child, i) =>
+          React.isValidElement(child) && child.type === Row
+            ? React.cloneElement(child, { last: i === items.length - 1 })
+            : child,
+        )}
+      </View>
     </View>
   );
 }
 
-function Row({ label, sub, right, onPress }) {
+function Row({ label, sub, right, onPress, last }) {
   return (
     <Pressable
       onPress={onPress}
       disabled={!onPress}
-      style={({ pressed }) => [styles.row, pressed && onPress && styles.rowPressed]}
+      style={({ pressed }) => [styles.row, last && styles.rowLast, pressed && onPress && styles.rowPressed]}
     >
       <View style={{ flex: 1 }}>
         <Text style={styles.rowLabel}>{label}</Text>
@@ -299,38 +304,34 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.line,
   },
+  rowLast: { borderBottomWidth: 0 },
   rowPressed: { backgroundColor: colors.surfaceHi },
-  nameRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: space(3),
-    paddingHorizontal: space(5),
-    paddingVertical: space(4),
-  },
+  nameRow: { paddingHorizontal: space(5), paddingVertical: space(4) },
   nameInput: {
     ...type.body,
+    fontSize: 17,
     fontWeight: '700',
     color: colors.text,
     backgroundColor: colors.surfaceHi,
     borderRadius: radius.md,
-    paddingHorizontal: space(3),
-    paddingVertical: space(2),
-    minWidth: 120,
-    textAlign: 'right',
+    paddingHorizontal: space(4),
+    paddingVertical: space(3),
+    marginTop: space(3),
   },
   rowLabel: { ...type.body, fontWeight: '600', color: colors.text },
   rowSub: { ...type.body, fontSize: 13, color: colors.textDim, marginTop: 2 },
   chevron: { fontSize: 22, color: colors.textFaint },
   version: { ...type.mono, color: colors.textFaint },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: space(2), padding: space(4), paddingTop: space(3) },
+  chips: { flexDirection: 'row', gap: space(1.5), paddingHorizontal: space(4), paddingVertical: space(3) },
   chip: {
-    paddingHorizontal: space(3.5),
+    flex: 1,
+    alignItems: 'center',
     paddingVertical: space(2),
     borderRadius: radius.pill,
     borderWidth: 1,
     borderColor: colors.line,
   },
   chipActive: { backgroundColor: colors.accent, borderColor: colors.accent },
-  chipText: { ...type.label, fontSize: 12, color: colors.textDim },
+  chipText: { ...type.label, fontSize: 11, letterSpacing: 0.2, color: colors.textDim },
   chipTextActive: { color: colors.accentInk },
 });
