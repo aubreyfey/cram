@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -16,6 +16,8 @@ import Animated, { FadeIn } from 'react-native-reanimated';
 import Mascot from '../components/Mascot';
 import PrimaryButton from '../components/PrimaryButton';
 import { fetchYouTube } from '../lib/api';
+import { speechAvailable, startListening } from '../lib/speech';
+import { alert } from '../lib/alert';
 import { colors, radius, space, type } from '../theme';
 
 // A YouTube video inside Cram: watch it here, make cards from it. The
@@ -29,6 +31,45 @@ export default function VideoScreen({ video, canGenerate, onMakeCards, onClose }
   const [info, setInfo] = useState({ videoId: video.videoId, title: video.title || null, transcript: null });
   const [pasted, setPasted] = useState('');
   const [error, setError] = useState(null);
+
+  // Listen along: when there is no transcript anywhere, the phone's own
+  // speech recogniser hears the video through the microphone and writes
+  // it down. Nothing leaves the device; nothing is asked of YouTube.
+  const [canListen, setCanListen] = useState(false);
+  const [listening, setListening] = useState(false);
+  const [heard, setHeard] = useState('');
+  const [interim, setInterim] = useState('');
+  const listener = useRef(null);
+
+  useEffect(() => {
+    speechAvailable().then(setCanListen);
+    return () => listener.current?.dispose?.();
+  }, []);
+
+  const startListen = async () => {
+    try {
+      listener.current = await startListening({
+        onText: (fin, part) => {
+          setHeard(fin);
+          setInterim(part);
+        },
+        onEnd: () => setListening(false),
+        onError: (e) => alert('Listening stopped', e.message),
+      });
+      if (!listener.current) {
+        alert('Not available here', 'Listening along needs the full app build (or Chrome on the web).');
+        return;
+      }
+      setListening(true);
+    } catch (e) {
+      alert("Couldn't start listening", e.message);
+    }
+  };
+
+  const stopListen = () => {
+    listener.current?.stop();
+    setListening(false);
+  };
 
   useEffect(() => {
     if (!canGenerate) return;
@@ -109,12 +150,41 @@ export default function VideoScreen({ video, canGenerate, onMakeCards, onClose }
                 {error
                   ? error
                   : info.reason === 'no_captions'
-                    ? "This video has no captions, so there's nothing to read."
+                    ? 'This video has no captions at all - so there is nothing to fetch or paste.'
                     : "YouTube wouldn't hand over the captions for this one. It happens a lot."}
               </Text>
             </View>
+            {canListen ? (
+              <View style={[styles.how, listening && styles.howLive]}>
+                <View style={styles.howHead}>
+                  <Text style={styles.howTitle}>{listening ? 'Listening…' : 'Let the phone listen'}</Text>
+                  <Pressable onPress={listening ? stopListen : startListen} hitSlop={8} style={[styles.listenBtn, listening && styles.listenBtnOn]}>
+                    <Text style={[styles.listenText, listening && { color: colors.accentInk }]}>{listening ? 'Stop' : 'Start'}</Text>
+                  </Pressable>
+                </View>
+                <Text style={styles.howStep}>
+                  {listening
+                    ? 'Play the video above. Speaker on, no headphones. The words appear as it talks.'
+                    : "Press Start, then play the video. The microphone hears it and writes down what's said - on this device only."}
+                </Text>
+                {heard || interim ? (
+                  <Text style={styles.heard} numberOfLines={8}>
+                    {heard}
+                    {interim ? <Text style={{ color: colors.textDim }}> {interim}</Text> : null}
+                  </Text>
+                ) : null}
+                {!listening && heard.trim().length >= 40 ? (
+                  <PrimaryButton
+                    label="Make cards from what it heard"
+                    onPress={() => onMakeCards({ kind: 'text', text: heard.trim(), name: title, source })}
+                    style={{ marginTop: space(3) }}
+                  />
+                ) : null}
+              </View>
+            ) : null}
+
             <View style={styles.how}>
-              <Text style={styles.howTitle}>Thirty-second workaround</Text>
+              <Text style={styles.howTitle}>{canListen ? 'Or paste the transcript' : 'Thirty-second workaround'}</Text>
               <Text style={styles.howStep}>1. Open the video in YouTube (the ↗ above).</Text>
               <Text style={styles.howStep}>2. Under the video, tap the ⋯ menu → Show transcript.</Text>
               <Text style={styles.howStep}>3. Select all of it, copy, and paste below.</Text>
@@ -206,7 +276,19 @@ const styles = StyleSheet.create({
     borderColor: colors.line,
     padding: space(4),
   },
+  howLive: { borderColor: colors.accent + '88' },
+  howHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: space(2) },
   howTitle: { ...type.body, fontWeight: '700', color: colors.text, marginBottom: space(2) },
+  listenBtn: {
+    paddingHorizontal: space(4),
+    paddingVertical: space(2),
+    borderRadius: radius.pill,
+    borderWidth: 1.5,
+    borderColor: colors.accent,
+  },
+  listenBtnOn: { backgroundColor: colors.accent },
+  listenText: { ...type.label, fontSize: 12, color: colors.accent },
+  heard: { ...type.body, fontSize: 15, lineHeight: 22, color: colors.text, marginTop: space(3) },
   howStep: { ...type.body, fontSize: 14, color: colors.textDim, marginTop: space(1) },
   paste: {
     ...type.body,

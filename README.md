@@ -245,9 +245,10 @@ just "more of the same". The check lives in `canUseDocuments()` in
   inside Cram; the server asks YouTube for the captions and, when it gets
   them, one tap makes cards. YouTube refuses that request often (there is no
   official way to read captions on other people's videos, and servers are
-  blocked more than phones), so the screen then shows the 30-second
-  workaround - YouTube → ⋯ → Show transcript → copy → paste - and makes the
-  cards from that. The deck keeps the video: long-press → "Open the video".
+  blocked more than phones), so the screen then offers two ways on: **Let the phone listen** - play the
+  video, speaker on, and the on-device speech recogniser writes down what it
+  hears (nothing leaves the phone; needs the full build or Chrome) - or paste
+  the transcript from YouTube (⋯ → Show transcript). Both make the same cards. The deck keeps the video: long-press → "Open the video".
 - **Talk it out.** Import → "Talk it out", "Explain it out loud" after a deck,
   or "Talk through it" on an exam page. Record yourself explaining the
   material; the words appear as you speak (on-device speech recognition via
