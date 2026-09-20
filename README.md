@@ -241,6 +241,14 @@ just "more of the same". The check lives in `canUseDocuments()` in
   4. Change a status from the dashboard (Table editor → feedback → status,
      note), or `select set_status('<id>', 'planned', 'Coming in October');`
      in the SQL editor. Post an update by adding a row to `updates`.
+- **Talk it out.** Import → "Talk it out", "Explain it out loud" after a deck,
+  or "Talk through it" on an exam page. Record yourself explaining the
+  material; the words appear as you speak (on-device speech recognition via
+  `expo-speech-recognition` - needs a real build, not Expo Go; works in Chrome
+  on the web). Play it back, fix the transcript, keep it ("My talks" in the
+  library - your own podcast) or make cards from it. Recordings live in the
+  documents directory, transcripts with them. Nothing is uploaded unless you
+  choose to make cards.
 - **Read the PDF first.** Picking a PDF opens it in the app before anything
   is sent - reading is free; "Make cards" underneath is where the Pro gate
   sits. A deck made from a PDF keeps a copy (documents directory, deleted

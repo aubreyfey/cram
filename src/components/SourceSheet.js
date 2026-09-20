@@ -46,6 +46,14 @@ const OPTIONS = [
     free: true,
     subtitle: 'Type cards, or paste notes or a shared deck',
   },
+  {
+    key: 'talk',
+    glyph: '􀊱',
+    fallback: '●',
+    title: 'Talk it out',
+    free: true,
+    subtitle: 'Explain it out loud; keep it, or make cards from it',
+  },
 ];
 
 export default function SourceSheet({ visible, isPro, onPick, onClose }) {

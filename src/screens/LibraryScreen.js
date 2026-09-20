@@ -30,6 +30,8 @@ export default function LibraryScreen({
   onAddPages,
   onRename,
   onOpenSource,
+  talkCount = 0,
+  onOpenTalks,
   onCreate,
   onSettings,
   onClose,
@@ -151,6 +153,17 @@ export default function LibraryScreen({
               <Text style={styles.upsellCta}>$19.99</Text>
             </Pressable>
           ) : null}
+            {onOpenTalks && talkCount ? (
+              <Pressable onPress={onOpenTalks} style={styles.talksRow}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.talksTitle}>My talks</Text>
+                  <Text style={styles.talksSub}>
+                    {talkCount} {talkCount === 1 ? 'recording' : 'recordings'} of you explaining things
+                  </Text>
+                </View>
+                <Text style={styles.chevron}>›</Text>
+              </Pressable>
+            ) : null}
             {decks.length ? <Text style={styles.sectionTitle}>YOUR DECKS</Text> : null}
           </View>
         }
@@ -262,6 +275,20 @@ const styles = StyleSheet.create({
     padding: space(4),
   },
   weekEmptyText: { ...type.body, fontSize: 14, color: colors.textDim },
+  talksRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: space(6),
+    marginTop: space(4),
+    padding: space(4),
+    borderRadius: radius.lg,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.line,
+  },
+  talksTitle: { ...type.body, fontWeight: '700', color: colors.text },
+  talksSub: { ...type.body, fontSize: 13, color: colors.textDim, marginTop: 2 },
+  chevron: { fontSize: 22, color: colors.textFaint },
   due: {
     flexDirection: 'row',
     alignItems: 'center',

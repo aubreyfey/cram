@@ -66,6 +66,19 @@
           "organization": "north-beam-llc",
           "project": "cram"
         }
+      ],
+      [
+        "expo-audio",
+        {
+          "microphonePermission": "Cram records you explaining what you learned, so you can listen back and turn it into cards."
+        }
+      ],
+      [
+        "expo-speech-recognition",
+        {
+          "microphonePermission": "Cram records you explaining what you learned, so you can listen back and turn it into cards.",
+          "speechRecognitionPermission": "Cram turns what you say into text, on your device, so it can become cards."
+        }
       ]
     ],
     "extra": {

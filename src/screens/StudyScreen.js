@@ -43,6 +43,7 @@ export default function StudyScreen({
   onFeedback,
   onPaywall,
   onRename,
+  onTalk,
   initialMode = 'cards',
 }) {
   // The queue is a list of ids fixed at the start of the session; the cards
@@ -194,6 +195,16 @@ export default function StudyScreen({
                 : `${ratings[RATING.AGAIN]} coming back tomorrow.`}
           </Text>
           <PrimaryButton label="Done" onPress={onClose} style={{ marginTop: space(10) }} />
+          {/* The Feynman step: you've just seen every card - now say it
+              without looking. The best time to ask is exactly now. */}
+          {onTalk ? (
+            <PrimaryButton
+              label="Explain it out loud"
+              variant="ghost"
+              onPress={() => onTalk(deck)}
+              style={{ marginTop: space(3), alignSelf: 'stretch' }}
+            />
+          ) : null}
           {/* The end of a run is when someone has the next slide in their
               hand, so "add another page" lives here rather than in a menu.
               A cross-deck session has no single deck to add to, so it only

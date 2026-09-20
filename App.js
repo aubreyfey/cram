@@ -22,6 +22,8 @@ import ExamEditorScreen from './src/screens/ExamEditorScreen';
 import DocumentScreen from './src/screens/DocumentScreen';
 import BoardScreen from './src/screens/BoardScreen';
 import ExamScreen from './src/screens/ExamScreen';
+import TalkScreen from './src/screens/TalkScreen';
+import TalksScreen from './src/screens/TalksScreen';
 
 import { MAX_PAGES, generateDeck, generateGuide } from './src/lib/api';
 import { pickDocument, pickFromLibrary } from './src/lib/pickers';
@@ -44,6 +46,7 @@ import { makeSampleDeck } from './src/lib/sampleDeck';
 import { mergeDecks, readDeckFile } from './src/lib/backup';
 import { configureNotifications, rearmNag } from './src/lib/reminders';
 import { dropSource, keepSource } from './src/lib/sources';
+import { deleteTalk, loadTalks, saveTalk } from './src/lib/talks';
 import { initMonitoring, wrapRoot } from './src/lib/monitoring';
 import { colors } from './src/theme';
 
@@ -70,6 +73,10 @@ function App() {
   const [exams, setExams] = useState([]);
   const [editingExam, setEditingExam] = useState(null);
   const [viewingExam, setViewingExam] = useState(null);
+  const [talks, setTalks] = useState([]);
+  // { title?, deckId?, examId?, back } - what a talk is about and where
+  // Cancel/Done return to.
+  const [talkContext, setTalkContext] = useState(null);
   const [studyMode, setStudyMode] = useState('cards');
   // When set, the next scan's cards are appended to this deck instead of
   // making a new one. A lecture is thirty slides, not thirty decks.
@@ -88,6 +95,7 @@ function App() {
     setPro(await isSubscribed());
     setStreak((await getStreak()).count);
     setExams(await loadExams());
+    setTalks(await loadTalks());
   }, []);
 
   useEffect(() => {
@@ -198,6 +206,10 @@ function App() {
         setScreen('create');
         return;
       }
+      if (kind === 'talk') {
+        openTalk({ back: 'camera' });
+        return;
+      }
 
       try {
         const picked =
@@ -224,7 +236,7 @@ function App() {
         alert("Couldn't open that", e.message);
       }
     },
-    [start, addPages, importDecks],
+    [start, addPages, importDecks, openTalk],
   );
 
   const makeCardsFromDoc = useCallback(async () => {
@@ -316,6 +328,20 @@ function App() {
       setScreen('study');
     },
     [decks],
+  );
+
+  const openTalk = useCallback((ctx) => {
+    setTalkContext(ctx);
+    setScreen('talk');
+  }, []);
+
+  // A talk becomes a deck the same way pasted notes do.
+  const cardsFromTalk = useCallback(
+    (talk) => {
+      setTalkContext(null);
+      start({ kind: 'text', text: talk.transcript, name: talk.title });
+    },
+    [start],
   );
 
   const writeGuide = useCallback(async (exam, plan) => {
@@ -436,6 +462,33 @@ function App() {
               </Screen>
             ) : null}
 
+            {screen === 'talk' && (
+              <Screen preset="modal">
+                <TalkScreen
+                  context={talkContext}
+                  onSave={async (talk) => {
+                    setTalks(await saveTalk(talk));
+                    setScreen(talkContext?.back ?? 'talks');
+                  }}
+                  onMakeCards={cardsFromTalk}
+                  onClose={() => setScreen(talkContext?.back ?? 'library')}
+                />
+              </Screen>
+            )}
+
+            {screen === 'talks' && (
+              <Screen preset="push">
+                <TalksScreen
+                  talks={talks}
+                  decks={decks}
+                  onRecord={() => openTalk({ back: 'talks' })}
+                  onMakeCards={cardsFromTalk}
+                  onDelete={async (id) => setTalks(await deleteTalk(id))}
+                  onClose={() => setScreen('library')}
+                />
+              </Screen>
+            )}
+
             {screen === 'examhub' && viewingExam && (
               <Screen preset="push">
                 <ExamScreen
@@ -443,6 +496,7 @@ function App() {
                   decks={decks}
                   onStudy={studyExam}
                   onGuide={writeGuide}
+                  onTalk={(e) => openTalk({ title: e.title, examId: e.id, back: 'examhub' })}
                   onEdit={(e) => {
                     setEditingExam(e);
                     setScreen('exam');
@@ -567,6 +621,7 @@ function App() {
                   onUpdateDeck={updateDeck}
                   onAddPages={appendToDeck}
                   onFeedback={() => setScreen('board')}
+                  onTalk={(d) => openTalk({ title: d.title, deckId: d.virtual ? null : d.id, back: 'study' })}
                   onRename={(d) => setRenaming(d)}
                   onPaywall={(reason) => {
                     setPaywallReason(reason);
@@ -590,6 +645,8 @@ function App() {
                   onReviewDue={reviewDue}
                   onRename={(d) => setRenaming(d)}
                   onOpenSource={(d) => openSource(d, 'library')}
+                  talkCount={talks.length}
+                  onOpenTalks={() => setScreen('talks')}
                   onAddPages={appendToDeck}
                   onCreate={() => setScreen('create')}
                   onSettings={() => setScreen('settings')}

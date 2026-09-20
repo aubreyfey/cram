@@ -14,7 +14,7 @@ import { colors, radius, space, type } from '../theme';
 // and the study guide - then a single big button that starts the right
 // session. The guide is the only thing here that costs a request; it is
 // cached on the exam, so it happens once.
-export default function ExamScreen({ exam, decks, onStudy, onEdit, onGuide, onClose }) {
+export default function ExamScreen({ exam, decks, onStudy, onEdit, onGuide, onTalk, onClose }) {
   const insets = useSafeAreaInsets();
   const plan = useMemo(() => studyPlan(exam, decks), [exam, decks]);
   const [making, setMaking] = useState(false);
@@ -77,6 +77,16 @@ export default function ExamScreen({ exam, decks, onStudy, onEdit, onGuide, onCl
             </Text>
           ) : null}
         </Animated.View>
+
+        {onTalk && plan.total ? (
+          <Pressable onPress={() => onTalk(exam)} style={styles.talkRow}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.talkTitle}>Talk through it</Text>
+              <Text style={styles.sub}>Explain the whole exam out loud, no cards. Keep the recording.</Text>
+            </View>
+            <Text style={styles.chevron}>›</Text>
+          </Pressable>
+        ) : null}
 
         {/* Weak spots */}
         {plan.weak.length ? (
@@ -211,6 +221,19 @@ const styles = StyleSheet.create({
   sub: { ...type.body, fontSize: 14, color: colors.textDim, marginTop: space(2) },
   weak: { ...type.body, fontSize: 14, color: colors.text, marginTop: space(2) },
   redo: { ...type.body, fontSize: 13, fontWeight: '700', color: colors.accent },
+  talkRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space(3),
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.accent + '44',
+    padding: space(5),
+    marginTop: space(4),
+  },
+  talkTitle: { ...type.body, fontSize: 16, fontWeight: '700', color: colors.text },
+  chevron: { fontSize: 22, color: colors.textFaint },
   guideEmpty: { flexDirection: 'row', alignItems: 'center', gap: space(4), marginTop: space(3) },
   overview: { ...type.body, fontSize: 16, color: colors.text, marginTop: space(3), lineHeight: 24 },
   topic: { marginTop: space(5), paddingTop: space(4), borderTopWidth: 1, borderTopColor: colors.line },
