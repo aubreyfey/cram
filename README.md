@@ -281,6 +281,10 @@ just "more of the same". The check lives in `canUseDocuments()` in
 Worth keeping, because the design is the marketing here — the launch is a
 15-second screen recording, and if it doesn't read muted, it doesn't work.
 
+- **A name is optional.** Settings → "What should Volt call you?". Used in a
+  few warm places - the clean-sweep line, the nag ("Aubrey. It's been five
+  minutes."), the sign-off on a shared deck - and never as a gate or a form.
+  Stays on the phone.
 - **Camera opens on launch.** No home screen, no onboarding, no sign-in. The
   one thing in front of it is the opening: Volt wakes, the wordmark rises,
   and it dissolves into the camera in about a second and a half. Tap to

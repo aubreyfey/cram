@@ -1,5 +1,6 @@
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { firstName, getProfile } from './profile';
 
 const KEY = 'cram.reminder.v1';
 const NAG_MINUTES = 5;
@@ -123,7 +124,9 @@ export async function rearmNag() {
   if (!r.enabled || !r.nag) return save(r);
 
   await ensureChannels();
-  const line = NAG_LINES[Math.floor(Math.random() * NAG_LINES.length)];
+  const who = firstName((await getProfile()).name);
+  const pick = NAG_LINES[Math.floor(Math.random() * NAG_LINES.length)];
+  const line = who ? `${who}. ${pick}` : pick;
   r.nagId = await N.scheduleNotificationAsync({
     content: alarmContent(line),
     trigger: {

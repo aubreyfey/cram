@@ -22,6 +22,7 @@ import { explainCard } from '../lib/api';
 import { canExplain } from '../lib/entitlements';
 import { addExplain } from '../lib/storage';
 import { maybeAskForReview, shareCram } from '../lib/growth';
+import { firstName } from '../lib/profile';
 import { colors, motion, radius, space, type } from '../theme';
 
 // Four ways through the same queue, in rough order of difficulty. Quiz is
@@ -44,6 +45,7 @@ export default function StudyScreen({
   onPaywall,
   onRename,
   onTalk,
+  name = '',
   initialMode = 'cards',
 }) {
   // The queue is a list of ids fixed at the start of the session; the cards
@@ -191,7 +193,9 @@ export default function StudyScreen({
             {timedOut
               ? `Time. ${queue.length - index} left in the deck.`
               : cleanSweep
-                ? 'Clean sweep. Nothing to redo.'
+                ? firstName(name)
+                  ? `Clean sweep, ${firstName(name)}. Nothing to redo.`
+                  : 'Clean sweep. Nothing to redo.'
                 : `${ratings[RATING.AGAIN]} coming back tomorrow.`}
           </Text>
           <PrimaryButton label="Done" onPress={onClose} style={{ marginTop: space(10) }} />

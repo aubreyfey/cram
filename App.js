@@ -52,6 +52,7 @@ import { configureNotifications, rearmNag } from './src/lib/reminders';
 import { dropSource, keepSource } from './src/lib/sources';
 import { deleteTalk, loadTalks, saveTalk } from './src/lib/talks';
 import { migrate } from './src/lib/migrations';
+import { getProfile } from './src/lib/profile';
 import { initMonitoring, wrapRoot } from './src/lib/monitoring';
 import { colors } from './src/theme';
 
@@ -66,6 +67,7 @@ import { alert } from './src/lib/alert';
 function App() {
   const [screen, setScreen] = useState('camera');
   const [opening, setOpening] = useState(true);
+  const [name, setNameState] = useState('');
   const [decks, setDecks] = useState([]);
   const [activeDeck, setActiveDeck] = useState(null);
   const [source, setSource] = useState(null);
@@ -111,6 +113,7 @@ function App() {
     setStreak((await getStreak()).count);
     setExams(await loadExams());
     setTalks(await loadTalks());
+    setNameState((await getProfile()).name);
   }, []);
 
   useEffect(() => {
@@ -612,6 +615,7 @@ function App() {
                   tier={quota.admin ? 'admin' : pro ? 'pro' : 'free'}
                   deckCount={decks.length}
                   onImport={importDecks}
+                  onNameChange={setNameState}
                   onFeedback={() => setScreen('board')}
                   onClose={() => setScreen('library')}
                 />
@@ -670,6 +674,7 @@ function App() {
                   onUpdateDeck={updateDeck}
                   onAddPages={appendToDeck}
                   onFeedback={() => setScreen('board')}
+                  name={name}
                   onTalk={(d) => openTalk({ title: d.title, deckId: d.virtual ? null : d.id, back: 'study' })}
                   onRename={(d) => setRenaming(d)}
                   onPaywall={(reason) => {

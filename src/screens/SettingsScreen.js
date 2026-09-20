@@ -7,6 +7,7 @@ import {
   StyleSheet,
   Switch,
   Text,
+  TextInput,
   View,
 } from 'react-native';
 import Constants from 'expo-constants';
@@ -16,6 +17,7 @@ import { exportBackup, pickDeckFile } from '../lib/backup';
 import { restore } from '../lib/entitlements';
 import { REMINDER_TIMES, getReminder, sendTestAlarm, setReminder } from '../lib/reminders';
 import { openStorePage, shareCram, storeIsListed } from '../lib/growth';
+import { getProfile, setName } from '../lib/profile';
 import { colors, radius, space, type } from '../theme';
 import { alert } from '../lib/alert';
 
@@ -24,15 +26,23 @@ const VERSION = Constants.expoConfig?.version ?? '';
 
 // The one screen that is allowed to be boring. Everything here is something
 // a person does once - turn on the reminder, back up, restore a purchase.
-export default function SettingsScreen({ onClose, onImport, onFeedback, tier, deckCount }) {
+export default function SettingsScreen({ onClose, onImport, onFeedback, onNameChange, tier, deckCount }) {
   const insets = useSafeAreaInsets();
   const [reminder, setRem] = useState({ enabled: false, hour: 20, minute: 0, nag: true });
   const [testArmed, setTestArmed] = useState(false);
+  const [name, setNameState] = useState('');
   const [busy, setBusy] = useState(null);
 
   useEffect(() => {
     getReminder().then(setRem);
+    getProfile().then((p) => setNameState(p.name));
   }, []);
+
+  const commitName = async () => {
+    const p = await setName(name);
+    setNameState(p.name);
+    onNameChange?.(p.name);
+  };
 
   const applyReminder = async (next) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -101,6 +111,27 @@ export default function SettingsScreen({ onClose, onImport, onFeedback, tier, de
       </View>
 
       <ScrollView contentContainerStyle={[styles.body, { paddingBottom: insets.bottom + space(10) }]}>
+        <Section title="YOU">
+          <View style={styles.nameRow}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.rowLabel}>What should Volt call you?</Text>
+              <Text style={styles.rowSub}>Optional. Stays on this phone.</Text>
+            </View>
+            <TextInput
+              style={styles.nameInput}
+              value={name}
+              onChangeText={setNameState}
+              onBlur={commitName}
+              onSubmitEditing={commitName}
+              placeholder="Your name"
+              placeholderTextColor={colors.textFaint}
+              autoCapitalize="words"
+              returnKeyType="done"
+              maxLength={40}
+            />
+          </View>
+        </Section>
+
         <Section title="DAILY REMINDER">
           <Row
             label="Remind me to study"
@@ -269,6 +300,24 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.line,
   },
   rowPressed: { backgroundColor: colors.surfaceHi },
+  nameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space(3),
+    paddingHorizontal: space(5),
+    paddingVertical: space(4),
+  },
+  nameInput: {
+    ...type.body,
+    fontWeight: '700',
+    color: colors.text,
+    backgroundColor: colors.surfaceHi,
+    borderRadius: radius.md,
+    paddingHorizontal: space(3),
+    paddingVertical: space(2),
+    minWidth: 120,
+    textAlign: 'right',
+  },
   rowLabel: { ...type.body, fontWeight: '600', color: colors.text },
   rowSub: { ...type.body, fontSize: 13, color: colors.textDim, marginTop: 2 },
   chevron: { fontSize: 22, color: colors.textFaint },
