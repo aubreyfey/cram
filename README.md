@@ -118,7 +118,14 @@ create projects: have the owner create a project called `cram` in
 and crashes start arriving. Don't point it at the existing `react-native`
 project - that is a different app.
 
-**6. The app key is a placeholder.** `app.json` → `extra.appKey` and the
+**6. Store links.** `app.json` → `ios.appStoreUrl` and `android.playStoreUrl` are
+empty until the listings exist; "Rate Cram" in Settings says so until then.
+The in-app review prompt (`expo-store-review`) fires on its own after the
+third finished deck with a clean sweep, at most once a month - never from a
+button, which is Apple's rule. `extra.shareUrl` is what "Share Cram" sends;
+it points at the web build until there is a store link.
+
+**7. The app key is a placeholder.** `app.json` → `extra.appKey` and the
 server's `CRAM_APP_KEY` both say `change-me`. They have to match.
 
 ## Submitting

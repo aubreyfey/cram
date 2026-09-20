@@ -15,6 +15,7 @@ import * as Haptics from 'expo-haptics';
 import { exportBackup, pickDeckFile } from '../lib/backup';
 import { restore } from '../lib/entitlements';
 import { REMINDER_TIMES, getReminder, sendTestAlarm, setReminder } from '../lib/reminders';
+import { openStorePage, shareCram, storeIsListed } from '../lib/growth';
 import { colors, radius, space, type } from '../theme';
 import { alert } from '../lib/alert';
 
@@ -173,6 +174,25 @@ export default function SettingsScreen({ onClose, onImport, onFeedback, tier, de
           <Row
             label="Restore purchases"
             onPress={() => restore().catch((e) => alert('Restore', e.message))}
+          />
+        </Section>
+
+        <Section title="SPREAD THE WORD">
+          <Row
+            label="Share Cram"
+            sub="Send it to someone with an exam coming"
+            onPress={shareCram}
+          />
+          <Row
+            label="Rate Cram"
+            sub={
+              storeIsListed()
+                ? "Thirty seconds on the App Store. It matters more than you'd think."
+                : 'Coming with the App Store listing'
+            }
+            onPress={async () => {
+              if (!(await openStorePage())) alert('Not on the store yet', 'Rating opens once Cram is listed.');
+            }}
           />
         </Section>
 

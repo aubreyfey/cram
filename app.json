@@ -22,7 +22,8 @@
         "NSCameraUsageDescription": "Cram uses your camera to turn lecture slides, textbook pages and handwritten notes into flashcards.",
         "NSPhotoLibraryUsageDescription": "Import a screenshot or photo of your notes to turn it into flashcards.",
         "ITSAppUsesNonExemptEncryption": false
-      }
+      },
+      "appStoreUrl": ""
     },
     "android": {
       "package": "com.cram.app",
@@ -31,7 +32,8 @@
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
-      }
+      },
+      "playStoreUrl": ""
     },
     "plugins": [
       [
@@ -74,7 +76,8 @@
       "feedbackEmail": "",
       "sentryDsn": "",
       "supabaseUrl": "",
-      "supabaseAnonKey": ""
+      "supabaseAnonKey": "",
+      "shareUrl": "https://aubreyfey.github.io/cram/"
     },
     "web": {
       "favicon": "./assets/favicon.png"

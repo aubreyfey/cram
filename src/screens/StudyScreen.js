@@ -21,6 +21,7 @@ import { shareDeck } from '../lib/share';
 import { explainCard } from '../lib/api';
 import { canExplain } from '../lib/entitlements';
 import { addExplain } from '../lib/storage';
+import { maybeAskForReview, shareCram } from '../lib/growth';
 import { colors, motion, radius, space, type } from '../theme';
 
 // Four ways through the same queue, in rough order of difficulty. Quiz is
@@ -79,6 +80,15 @@ export default function StudyScreen({
 
   const insets = useSafeAreaInsets();
   const done = index >= queue.length || timedOut;
+
+  // A finished deck is the signature moment. The review prompt decides for
+  // itself whether this is the time (see growth.js); most times it isn't.
+  const asked = useRef(false);
+  useEffect(() => {
+    if (!done || asked.current || timedOut) return;
+    asked.current = true;
+    maybeAskForReview({ cleanSweep: !ratings[RATING.AGAIN] });
+  }, [done]);
 
   // Blitz: a clock, and only two answers. Switching modes resets it so a
   // half-finished sprint doesn't leak into a calm Cards session.
@@ -197,6 +207,11 @@ export default function StudyScreen({
             <Pressable onPress={() => shareDeck(deck)} hitSlop={8}>
               <Text style={styles.afterLink}>Share deck</Text>
             </Pressable>
+            {cleanSweep ? (
+              <Pressable onPress={shareCram} hitSlop={8}>
+                <Text style={styles.afterLink}>Share Cram</Text>
+              </Pressable>
+            ) : null}
           </View>
           {onFeedback ? (
             <Pressable onPress={onFeedback} hitSlop={8} style={{ marginTop: space(5) }}>
