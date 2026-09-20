@@ -281,7 +281,11 @@ just "more of the same". The check lives in `canUseDocuments()` in
 Worth keeping, because the design is the marketing here — the launch is a
 15-second screen recording, and if it doesn't read muted, it doesn't work.
 
-- **Camera opens on launch.** No home screen, no onboarding, no sign-in.
+- **Camera opens on launch.** No home screen, no onboarding, no sign-in. The
+  one thing in front of it is the opening: Volt wakes, the wordmark rises,
+  and it dissolves into the camera in about a second and a half. Tap to
+  skip; reduced-motion skips it. It picks up from the native splash frame so
+  there is no cut.
 - **Three seconds, shutter to first card.** If the real number climbs, cut the
   work, don't add a nicer spinner.
 - **One accent color.** Acid lime on near-black, and nothing else competes.

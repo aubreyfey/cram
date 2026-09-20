@@ -4,7 +4,9 @@ import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
+import * as SplashScreen from 'expo-splash-screen';
 import ErrorBoundary from './src/components/ErrorBoundary';
+import Opening from './src/components/Opening';
 import AdminSheet from './src/components/AdminSheet';
 import RenameSheet from './src/components/RenameSheet';
 import LinkSheet from './src/components/LinkSheet';
@@ -54,10 +56,15 @@ import { colors } from './src/theme';
 
 // Before anything renders, so a crash in the first frame is still caught.
 initMonitoring();
+
+// Hold the native splash until the opening animation is on screen, so the
+// two are one continuous frame instead of splash -> flash -> app.
+SplashScreen.preventAutoHideAsync().catch(() => {});
 import { alert } from './src/lib/alert';
 
 function App() {
   const [screen, setScreen] = useState('camera');
+  const [opening, setOpening] = useState(true);
   const [decks, setDecks] = useState([]);
   const [activeDeck, setActiveDeck] = useState(null);
   const [source, setSource] = useState(null);
@@ -104,6 +111,7 @@ function App() {
   }, []);
 
   useEffect(() => {
+    SplashScreen.hideAsync().catch(() => {});
     refresh();
     configureNotifications();
     // Opening the app is proof of life: push the missed-study alarm to
@@ -756,6 +764,8 @@ function App() {
               onSave={renameDeck}
               onClose={() => setRenaming(null)}
             />
+
+            {opening ? <Opening onDone={() => setOpening(false)} /> : null}
 
             <AdminSheet
               visible={adminOpen}
