@@ -1,5 +1,6 @@
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { notifyChange, recordDeleted } from './storage';
 
 // Talks: the student explaining what they learned, out loud, to their
 // phone. Kept as their own little podcast - play it back on the bus - and
@@ -22,14 +23,17 @@ export async function saveTalk(talk) {
   const talks = await loadTalks();
   const next = [talk, ...talks.filter((t) => t.id !== talk.id)];
   await AsyncStorage.setItem(KEY, JSON.stringify(next));
+  notifyChange();
   return next;
 }
 
 export async function deleteTalk(id) {
   const talks = await loadTalks();
   const gone = talks.find((t) => t.id === id);
+  await recordDeleted(id);
   const next = talks.filter((t) => t.id !== id);
   await AsyncStorage.setItem(KEY, JSON.stringify(next));
+  notifyChange();
   if (gone?.uri && Platform.OS !== 'web') {
     try {
       const { File } = await import('expo-file-system');
@@ -63,4 +67,9 @@ export function fmtDuration(seconds) {
   const s = Math.max(0, Math.round(seconds || 0));
   const m = Math.floor(s / 60);
   return `${m}:${String(s % 60).padStart(2, '0')}`;
+}
+
+// Whole-list write from a cloud merge. Quiet: no change notification.
+export async function writeMergedTalks(talks) {
+  await AsyncStorage.setItem(KEY, JSON.stringify(talks));
 }

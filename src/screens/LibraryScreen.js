@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, {
@@ -15,6 +15,7 @@ import PrimaryButton from '../components/PrimaryButton';
 import { deckProgress, dueCount } from '../lib/srs';
 import { upcoming } from '../lib/exams';
 import { shareDeck } from '../lib/share';
+import { dismissBackupNudge, onStatus, shouldNudgeBackup } from '../lib/cloud';
 import { colors, motion, radius, space, type } from '../theme';
 import { alert } from '../lib/alert';
 
@@ -36,11 +37,23 @@ export default function LibraryScreen({
   onSettings,
   onClose,
   onDelete,
-  isPro,
-  onUpgrade,
   onLoadSample,
 }) {
   const insets = useSafeAreaInsets();
+  // "Back this up?" - once, for guests with a few decks. Re-checked when
+  // the deck count or sign-in state changes, so it leaves the moment
+  // they sign in.
+  const [nudge, setNudge] = useState(false);
+  useEffect(() => {
+    let live = true;
+    const check = () => shouldNudgeBackup(decks.length).then((v) => live && setNudge(v));
+    check();
+    const stop = onStatus(check);
+    return () => {
+      live = false;
+      stop();
+    };
+  }, [decks.length]);
   const totalDue = decks.reduce((n, d) => n + dueCount(d.cards), 0);
   const soon = upcoming(exams);
 
@@ -146,14 +159,27 @@ export default function LibraryScreen({
             </Pressable>
           ) : null}
 
-          {!isPro ? (
-            <Pressable style={styles.upsell} onPress={onUpgrade}>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.upsellTitle}>Unlimited cards</Text>
-                <Text style={styles.upsellBody}>Semester Pass covers you to finals</Text>
+          {nudge && onSettings ? (
+            <Animated.View entering={FadeInDown.duration(320)} style={styles.nudge}>
+              <Text style={styles.nudgeTitle}>Back this up?</Text>
+              <Text style={styles.nudgeBody}>
+                {decks.length} decks live only on this phone. Sign in and they follow you to the next one.
+              </Text>
+              <View style={styles.nudgeRow}>
+                <Pressable
+                  onPress={() => {
+                    dismissBackupNudge();
+                    setNudge(false);
+                  }}
+                  hitSlop={8}
+                >
+                  <Text style={styles.nudgeLater}>Not now</Text>
+                </Pressable>
+                <Pressable onPress={onSettings} hitSlop={8}>
+                  <Text style={styles.nudgeCta}>Sign in</Text>
+                </Pressable>
               </View>
-              <Text style={styles.upsellCta}>$19.99</Text>
-            </Pressable>
+            </Animated.View>
           ) : null}
             {onOpenTalks && talkCount ? (
               <Pressable onPress={onOpenTalks} style={styles.talksRow}>
@@ -305,9 +331,7 @@ const styles = StyleSheet.create({
   dueTitle: { ...type.body, fontWeight: '800', color: colors.accentInk },
   dueBody: { ...type.body, fontSize: 14, color: colors.accentInk, opacity: 0.7, marginTop: 2 },
   dueCta: { ...type.label, color: colors.accentInk },
-  upsell: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  nudge: {
     marginHorizontal: space(6),
     marginTop: space(5),
     padding: space(5),
@@ -316,9 +340,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.accent + '33',
   },
-  upsellTitle: { ...type.body, fontWeight: '700', color: colors.text },
-  upsellBody: { ...type.body, fontSize: 14, color: colors.textDim, marginTop: 2 },
-  upsellCta: { ...type.body, fontWeight: '800', color: colors.accent },
+  nudgeTitle: { ...type.body, fontWeight: '700', color: colors.text },
+  nudgeBody: { ...type.body, fontSize: 14, color: colors.textDim, marginTop: 2 },
+  nudgeRow: { flexDirection: 'row', justifyContent: 'flex-end', gap: space(6), marginTop: space(4) },
+  nudgeLater: { ...type.label, color: colors.textFaint },
+  nudgeCta: { ...type.label, color: colors.accent },
   card: {
     backgroundColor: colors.surface,
     borderRadius: radius.lg,

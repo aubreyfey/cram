@@ -34,7 +34,7 @@ let impl = null;
 async function backend() {
   if (impl) return impl;
   impl = boardIsLive
-    ? (await import('./boardSupabase')).createSupabaseBoard(URL, KEY)
+    ? (await import('./boardSupabase')).createSupabaseBoard()
     : (await import('./boardLocal')).createLocalBoard();
   return impl;
 }

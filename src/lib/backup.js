@@ -2,10 +2,11 @@ import { Platform } from 'react-native';
 import * as DocumentPicker from 'expo-document-picker';
 import { loadDecks } from './storage';
 
-// Decks live only on the phone. Until there is an account to sync to, a file
-// is the backup: export everything to Files / iCloud Drive / an email to
-// yourself, import it back on a new phone. The same format carries a single
-// deck between friends with every hint intact, which pasted text can't.
+// The file backup. Signed in, cloud.js keeps a copy on the account; this is
+// the way that needs no account: export everything to Files / iCloud Drive
+// / an email to yourself, import it back on a new phone. The same format
+// carries a single deck between friends with every hint intact, which
+// pasted text can't.
 //
 // File shape, versioned so a future import can migrate:
 //   { cram: 1, exportedAt, decks: [deck, ...] }

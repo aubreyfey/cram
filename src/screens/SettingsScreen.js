@@ -14,6 +14,9 @@ import Constants from 'expo-constants';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import { exportBackup, pickDeckFile } from '../lib/backup';
+import SignInSheet from '../components/SignInSheet';
+import { accountIsLive, getSession, signOut } from '../lib/account';
+import { cloudIsLive, getStatus, onStatus, sync } from '../lib/cloud';
 import { restore } from '../lib/entitlements';
 import { REMINDER_TIMES, getReminder, sendTestAlarm, setReminder } from '../lib/reminders';
 import { openStorePage, shareCram, storeIsListed } from '../lib/growth';
@@ -32,10 +35,15 @@ export default function SettingsScreen({ onClose, onImport, onFeedback, onNameCh
   const [testArmed, setTestArmed] = useState(false);
   const [name, setNameState] = useState('');
   const [busy, setBusy] = useState(null);
+  const [session, setSession] = useState(null);
+  const [cloud, setCloud] = useState(getStatus());
+  const [signingIn, setSigningIn] = useState(false);
 
   useEffect(() => {
     getReminder().then(setRem);
     getProfile().then((p) => setNameState(p.name));
+    if (accountIsLive) getSession().then(setSession);
+    return onStatus(setCloud);
   }, []);
 
   const commitName = async () => {
@@ -70,6 +78,19 @@ export default function SettingsScreen({ onClose, onImport, onFeedback, onNameCh
     setTestArmed(true);
     setTimeout(() => setTestArmed(false), 35000);
   };
+
+  const leave = () =>
+    alert('Sign out?', 'Your decks stay on this phone. They just stop backing up.', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Sign out',
+        style: 'destructive',
+        onPress: async () => {
+          await signOut();
+          setSession(null);
+        },
+      },
+    ]);
 
   const doExport = async () => {
     setBusy('export');
@@ -176,7 +197,27 @@ export default function SettingsScreen({ onClose, onImport, onFeedback, onNameCh
           />
         </Section>
 
-        <Section title="BACKUP">
+        <Section title="ACCOUNT">
+          {!accountIsLive ? <Row label="Cloud backup" sub="Not available in this build" /> : null}
+          {accountIsLive && session ? <Row label={session.user.email} sub={cloudLine(cloud)} /> : null}
+          {accountIsLive && session ? (
+            <Row
+              label={cloud.syncing ? 'Backing up…' : 'Back up now'}
+              sub="Runs on its own after every change; this is for the impatient"
+              onPress={cloud.syncing ? null : () => sync()}
+            />
+          ) : null}
+          {accountIsLive && session ? <Row label="Sign out" onPress={leave} /> : null}
+          {accountIsLive && !session ? (
+            <Row
+              label="Sign in to back up"
+              sub="Decks, exams and progress saved to your account. Get them back on a new phone."
+              onPress={() => setSigningIn(true)}
+            />
+          ) : null}
+        </Section>
+
+        <Section title="BACKUP FILE">
           <Row
             label={busy === 'export' ? 'Exporting…' : 'Export all decks'}
             sub={`${deckCount} ${deckCount === 1 ? 'deck' : 'decks'} to a file you can keep anywhere`}
@@ -239,8 +280,32 @@ export default function SettingsScreen({ onClose, onImport, onFeedback, onNameCh
           <Row label="Version" right={<Text style={styles.version}>{VERSION}</Text>} />
         </Section>
       </ScrollView>
+      <SignInSheet
+        visible={signingIn}
+        onClose={() => setSigningIn(false)}
+        onSignedIn={(s) => {
+          setSigningIn(false);
+          setSession(s);
+          sync();
+        }}
+        sub="No password. We email you a code, you type it, and your decks start backing up."
+      />
     </View>
   );
+}
+
+// "Backed up just now", "Backed up 3 min ago", or what went wrong.
+function cloudLine(c) {
+  if (!cloudIsLive) return '';
+  if (c.syncing) return 'Backing up…';
+  if (c.error) return c.error;
+  if (!c.lastSync) return 'Not backed up yet';
+  const m = Math.round((Date.now() - c.lastSync) / 60000);
+  if (m < 1) return 'Backed up just now';
+  if (m < 60) return `Backed up ${m} min ago`;
+  const h = Math.round(m / 60);
+  if (h < 24) return `Backed up ${h}h ago`;
+  return `Backed up ${Math.round(h / 24)}d ago`;
 }
 
 function Section({ title, children }) {

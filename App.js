@@ -53,6 +53,7 @@ import { configureNotifications, rearmNag } from './src/lib/reminders';
 import { dropSource, keepSource } from './src/lib/sources';
 import { deleteTalk, loadTalks, saveTalk } from './src/lib/talks';
 import { migrate } from './src/lib/migrations';
+import { onMerged, startCloud, sync as syncCloud } from './src/lib/cloud';
 import { getProfile } from './src/lib/profile';
 import { initMonitoring, wrapRoot } from './src/lib/monitoring';
 import { colors } from './src/theme';
@@ -123,15 +124,25 @@ function App() {
 
   useEffect(() => {
     SplashScreen.hideAsync().catch(() => {});
-    refresh();
+    // Cloud backup starts after the first load, so it never snapshots data
+    // the migration step has not brought up to date yet.
+    refresh().then(startCloud);
     configureNotifications();
     // Opening the app is proof of life: push the missed-study alarm to
     // tomorrow. Also re-arm whenever the app comes back to the foreground.
     rearmNag();
+    // Signed in, a merge that changed anything reloads the library.
+    const stopMerged = onMerged(refresh);
     const sub = AppState.addEventListener('change', (s) => {
-      if (s === 'active') rearmNag();
+      if (s === 'active') {
+        rearmNag();
+        syncCloud();
+      }
     });
-    return () => sub.remove();
+    return () => {
+      sub.remove();
+      stopMerged();
+    };
   }, [refresh]);
 
   const run = useCallback(
@@ -696,7 +707,6 @@ function App() {
                 <LibraryScreen
                   decks={decks}
                   streak={streak}
-                  isPro={pro}
                   onOpen={(deck) => {
                     setActiveDeck(deck);
                     setScreen('study');
@@ -731,10 +741,6 @@ function App() {
                     // due-across-decks button and exams have something to do.
                     await saveDeck(makeSampleDeck());
                     setDecks(await saveDeck(makeBiologySampleDeck()));
-                  }}
-                  onUpgrade={() => {
-                    setPaywallReason('library');
-                    setScreen('paywall');
                   }}
                   onClose={() => setScreen('camera')}
                 />

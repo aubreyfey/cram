@@ -17,6 +17,7 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 import Mascot from '../components/Mascot';
 import PrimaryButton from '../components/PrimaryButton';
+import SignInSheet from '../components/SignInSheet';
 import {
   STATUS,
   boardIsLive,
@@ -244,6 +245,9 @@ export default function BoardScreen({ onClose, onPrivateNote }) {
           setPendingAction(null);
         }}
         onSignedIn={onSignedIn}
+        sub="No password. We email you a code, you type it, done. Posting and voting need it; reading never does."
+        via={{ signIn, verifyCode }}
+        demo={!boardIsLive}
       />
     </View>
   );
@@ -371,111 +375,6 @@ function ComposeSheet({ visible, onClose, onPosted }) {
   );
 }
 
-function SignInSheet({ visible, onClose, onSignedIn }) {
-  const [email, setEmail] = useState('');
-  const [code, setCode] = useState('');
-  const [sent, setSent] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const insets = useSafeAreaInsets();
-
-  useEffect(() => {
-    if (!visible) {
-      setSent(false);
-      setCode('');
-    }
-  }, [visible]);
-
-  const send = async () => {
-    const e = email.trim().toLowerCase();
-    if (!/^\S+@\S+\.\S+$/.test(e) || busy) return;
-    setBusy(true);
-    try {
-      await signIn(e);
-      setSent(true);
-    } catch (err) {
-      alert("Couldn't send the code", err.message);
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const verify = async () => {
-    if (!code.trim() || busy) return;
-    setBusy(true);
-    try {
-      const s = await verifyCode(email.trim().toLowerCase(), code);
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      onSignedIn(s);
-    } catch (err) {
-      alert("Didn't work", err.message);
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  return (
-    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
-      <KeyboardAvoidingView style={styles.sheet} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <View style={[styles.sheetHead, { paddingTop: Platform.OS === 'ios' ? space(4) : insets.top }]}>
-          <Pressable onPress={onClose} hitSlop={16}>
-            <Text style={styles.close}>Cancel</Text>
-          </Pressable>
-          <Text style={styles.sheetTitle}>Sign in</Text>
-          <View style={{ width: 56 }} />
-        </View>
-        <View style={styles.sheetBody}>
-          <Text style={styles.signTitle}>{sent ? 'Check your email' : 'Email, then a code'}</Text>
-          <Text style={styles.signSub}>
-            {sent
-              ? `We sent a 6-digit code to ${email.trim()}. Type it here.`
-              : 'No password. We email you a code, you type it, done. Posting and voting need it; reading never does.'}
-          </Text>
-          {!sent ? (
-            <TextInput
-              style={styles.inputTitle}
-              value={email}
-              onChangeText={setEmail}
-              autoFocus
-              autoCapitalize="none"
-              autoCorrect={false}
-              keyboardType="email-address"
-              returnKeyType="send"
-              onSubmitEditing={send}
-              placeholder="you@school.edu"
-              placeholderTextColor={colors.textFaint}
-            />
-          ) : (
-            <TextInput
-              style={[styles.inputTitle, styles.code]}
-              value={code}
-              onChangeText={setCode}
-              autoFocus
-              keyboardType="number-pad"
-              returnKeyType="done"
-              onSubmitEditing={verify}
-              maxLength={8}
-              placeholder="123456"
-              placeholderTextColor={colors.textFaint}
-            />
-          )}
-          {!boardIsLive ? <Text style={styles.hint}>Demo: any email, any code.</Text> : null}
-        </View>
-        <View style={[styles.sheetFoot, { paddingBottom: insets.bottom + space(4) }]}>
-          <PrimaryButton
-            label={busy ? 'One moment…' : sent ? 'Sign in' : 'Send me a code'}
-            onPress={sent ? verify : send}
-          />
-          {sent ? (
-            <Pressable onPress={() => setSent(false)} style={{ alignSelf: 'center', marginTop: space(3) }} hitSlop={8}>
-              <Text style={styles.privateText}>Wrong email?</Text>
-            </Pressable>
-          ) : null}
-        </View>
-      </KeyboardAvoidingView>
-    </Modal>
-  );
-}
-
 function ago(ts) {
   const d = Math.round((Date.now() - ts) / 86400000);
   if (d <= 0) return 'today';
@@ -590,6 +489,7 @@ const styles = StyleSheet.create({
     paddingVertical: space(3.5),
     marginTop: space(4),
   },
+  hint: { ...type.body, fontSize: 13, color: colors.textFaint, marginTop: space(3) },
   inputBody: {
     ...type.body,
     color: colors.text,
@@ -603,8 +503,4 @@ const styles = StyleSheet.create({
     textAlignVertical: 'top',
     marginTop: space(3),
   },
-  code: { letterSpacing: 6, textAlign: 'center', fontSize: 24, fontWeight: '800' },
-  hint: { ...type.body, fontSize: 13, color: colors.textFaint, marginTop: space(3) },
-  signTitle: { ...type.title, fontSize: 24, color: colors.text },
-  signSub: { ...type.body, color: colors.textDim, marginTop: space(2) },
 });

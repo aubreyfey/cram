@@ -98,3 +98,24 @@ returns void language sql security definer as $$
   update public.feedback set status = s, note = n where id = fid;
 $$;
 revoke execute on function public.set_status from public, anon, authenticated;
+
+-- Cloud backup ------------------------------------------------------------
+--
+-- One row per person: everything the app keeps on the phone (decks with
+-- their schedule, exams, talk transcripts, streak, name) as one JSON blob,
+-- written by src/lib/cloud.js after every change and read back at launch.
+-- Only the owner can see or touch their row. Nothing here is shared.
+
+create table public.backups (
+  user_id     uuid primary key references auth.users (id) on delete cascade,
+  data        jsonb not null,
+  updated_at  timestamptz not null default now()
+);
+
+alter table public.backups enable row level security;
+
+create policy "own backup: read"   on public.backups for select using (auth.uid() = user_id);
+create policy "own backup: create" on public.backups for insert with check (auth.uid() = user_id);
+create policy "own backup: update" on public.backups for update
+  using (auth.uid() = user_id) with check (auth.uid() = user_id);
+create policy "own backup: delete" on public.backups for delete using (auth.uid() = user_id);

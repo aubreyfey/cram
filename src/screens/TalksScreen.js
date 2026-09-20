@@ -26,6 +26,12 @@ export default function TalksScreen({ talks, decks, onRecord, onMakeCards, onDel
 
   const toggle = (talk) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    // Backed up from another phone: the transcript came along, the audio
+    // stayed where it was recorded.
+    if (!talk.uri) {
+      alert('Recorded on another phone', 'The audio stayed there. The transcript is here, and cards can still be made from it.');
+      return;
+    }
     if (current?.id === talk.id) {
       if (status.playing) player.pause();
       else {

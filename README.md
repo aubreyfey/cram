@@ -57,6 +57,8 @@ src/components/
 src/lib/
   api.js                   resize, upload, parse
   storage.js               decks, free-tier meter, streak (AsyncStorage)
+  cloud.js                 cloud backup: pull, merge, push, per account
+  account.js               sign-in: email + one-time code (Supabase)
   srs.js                   trimmed SM-2 scheduling
   share.js                 deck -> plain text for the share sheet
   entitlements.js          plans + the RevenueCat seam  ← see TODO
@@ -234,6 +236,8 @@ just "more of the same". The check lives in `canUseDocuments()` in
   code signs in). To make it real:
   1. supabase.com → New project (free). Authentication → Providers → Email:
      turn **off** "Confirm email", leave the OTP/magic link on.
+     (Emails go out from Supabase's own sender on the free tier, a few an
+     hour; set up a custom SMTP sender before real users.)
   2. SQL Editor → paste `supabase/schema.sql` → Run.
   3. Project Settings → API: copy the URL and the `anon` key into `app.json`
      → `extra.supabaseUrl` / `extra.supabaseAnonKey`. The anon key is meant
@@ -241,6 +245,16 @@ just "more of the same". The check lives in `canUseDocuments()` in
   4. Change a status from the dashboard (Table editor → feedback → status,
      note), or `select set_status('<id>', 'planned', 'Coming in October');`
      in the SQL editor. Post an update by adding a row to `updates`.
+- **Cloud backup.** Settings → Account → "Sign in to back up". Same email +
+  code sign-in as the board, same Supabase project, same session. Once in,
+  decks, exams, talk transcripts, streak and name are copied to a row that
+  only that person can read (`backups` in `supabase/schema.sql`) after every
+  change, at launch and on foreground. A second phone signed in to the same
+  email gets everything back and the two keep converging: a deck studied
+  more recently wins, a deck deleted anywhere stays deleted (tombstones),
+  nothing rolls progress back. Audio recordings stay on the phone that made
+  them. Without Supabase keys the Account row says so and the app is exactly
+  as before. Not a sign-in wall: everything works signed out.
 - **YouTube video.** Import → "YouTube video", paste a link. The video plays
   inside Cram; the server asks YouTube for the captions and, when it gets
   them, one tap makes cards. YouTube refuses that request often (there is no

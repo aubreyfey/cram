@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { notifyChange } from './storage';
 
 // The one thing the app knows about the person: what to call them. Asked
 // once by Volt right after the first opening (skippable), editable in
@@ -28,10 +29,18 @@ export async function setName(name) {
   const p = await getProfile();
   const next = { ...p, name: (name || '').trim().slice(0, 40), asked: true };
   await AsyncStorage.setItem(KEY, JSON.stringify(next));
+  notifyChange();
   return next;
 }
 
 // First name only, for greetings. "Aubrey Fey" -> "Aubrey".
 export function firstName(name) {
   return (name || '').trim().split(/\s+/)[0] || '';
+}
+
+// From a cloud merge: a name from another phone, when this one has none.
+// Quiet: no change notification.
+export async function writeMergedName(name) {
+  const p = await getProfile();
+  await AsyncStorage.setItem(KEY, JSON.stringify({ ...p, name, asked: true }));
 }

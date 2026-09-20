@@ -1,47 +1,12 @@
-import 'react-native-url-polyfill/auto';
-import { Platform } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { createClient } from '@supabase/supabase-js';
+import { friendly, supabase as client } from './supabase';
+import { getSession, signIn, signOut, verifyCode } from './account';
 
-// The real board. Sign-in is a one-time code by email - no password to
-// forget, no name to make up (the name is the part of the email before @,
-// which people can live with on a feedback board).
-export function createSupabaseBoard(url, key) {
-  const supabase = createClient(url, key, {
-    auth: {
-      storage: Platform.OS === 'web' ? undefined : AsyncStorage,
-      autoRefreshToken: true,
-      persistSession: true,
-      detectSessionInUrl: Platform.OS === 'web',
-    },
-  });
-
-  const toUser = (u) =>
-    u ? { id: u.id, email: u.email, name: u.user_metadata?.name || u.email?.split('@')[0] || 'Someone' } : null;
-
-  async function getSession() {
-    const { data } = await supabase.auth.getSession();
-    const user = toUser(data.session?.user);
-    return user ? { user } : null;
-  }
-
-  async function signIn(email) {
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: { shouldCreateUser: true },
-    });
-    if (error) throw new Error(friendly(error));
-  }
-
-  async function verifyCode(email, code) {
-    const { data, error } = await supabase.auth.verifyOtp({ email, token: code.trim(), type: 'email' });
-    if (error) throw new Error(friendly(error));
-    return { user: toUser(data.user) };
-  }
-
-  async function signOut() {
-    await supabase.auth.signOut();
-  }
+// The real board. Shares the app's one Supabase session (account.js), so a
+// person signed in for cloud backup can post and vote without signing in
+// again. The name is the part of the email before @, which people can live
+// with on a feedback board.
+export function createSupabaseBoard() {
+  const supabase = client();
 
   async function listFeedback() {
     const session = await getSession();
@@ -115,12 +80,4 @@ export function createSupabaseBoard(url, key) {
   }
 
   return { getSession, signIn, verifyCode, signOut, listFeedback, submitFeedback, toggleVote, listUpdates };
-}
-
-function friendly(error) {
-  const m = error?.message || '';
-  if (/rate limit/i.test(m)) return 'Too many tries. Give it a minute.';
-  if (/invalid|expired/i.test(m) && /token|otp|code/i.test(m)) return "That code didn't match. Check the email and try again.";
-  if (/network|fetch/i.test(m)) return "Can't reach the board right now.";
-  return m || 'Something went wrong.';
 }

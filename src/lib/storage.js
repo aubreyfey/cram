@@ -17,13 +17,16 @@ export async function saveDeck(deck) {
   const decks = await loadDecks();
   const next = [deck, ...decks.filter((d) => d.id !== deck.id)];
   await AsyncStorage.setItem(DECKS_KEY, JSON.stringify(next));
+  notifyChange();
   return next;
 }
 
 export async function deleteDeck(id) {
   const decks = await loadDecks();
   const next = decks.filter((d) => d.id !== id);
+  await recordDeleted(id);
   await AsyncStorage.setItem(DECKS_KEY, JSON.stringify(next));
+  notifyChange();
   return next;
 }
 
@@ -48,6 +51,7 @@ export async function saveCards(updates, removed = []) {
       }),
   }));
   await AsyncStorage.setItem(DECKS_KEY, JSON.stringify(next));
+  notifyChange();
   return next;
 }
 
@@ -119,6 +123,7 @@ export async function touchStreak() {
   if (s.last === today()) return s;
   const next = { count: s.last === yesterday() ? s.count + 1 : 1, last: today() };
   await AsyncStorage.setItem(STREAK_KEY, JSON.stringify(next));
+  notifyChange();
   return next;
 }
 
@@ -144,6 +149,7 @@ export async function setAdminCode(code) {
 // Whole-library write, for restoring a backup after merging.
 export async function saveAllDecks(decks) {
   await AsyncStorage.setItem(DECKS_KEY, JSON.stringify(decks));
+  notifyChange();
   return decks;
 }
 
@@ -167,12 +173,78 @@ export async function saveExam(exam) {
     a.date < b.date ? -1 : a.date > b.date ? 1 : 0,
   );
   await AsyncStorage.setItem(EXAMS_KEY, JSON.stringify(next));
+  notifyChange();
   return next;
 }
 
 export async function deleteExam(id) {
   const exams = await loadExams();
   const next = exams.filter((e) => e.id !== id);
+  await recordDeleted(id);
   await AsyncStorage.setItem(EXAMS_KEY, JSON.stringify(next));
+  notifyChange();
   return next;
+}
+
+// Change notifications. Anything that writes decks, exams, talks, streak or
+// profile calls notifyChange(); cloud backup listens and pushes a few
+// seconds later. Writes that come *from* the cloud use the quiet setters
+// below so a pull does not immediately trigger a push.
+const listeners = new Set();
+
+export function onChange(fn) {
+  listeners.add(fn);
+  return () => listeners.delete(fn);
+}
+
+export function notifyChange() {
+  for (const fn of listeners) fn();
+}
+
+// Tombstones: ids of decks, exams and talks the user deleted, with when.
+// Without them a deck deleted on this phone would come straight back from
+// the cloud copy on the next sync. Kept small; a few hundred is plenty.
+const DELETED_KEY = 'cram.deleted.v1';
+const DELETED_MAX = 500;
+
+export async function loadDeleted() {
+  try {
+    const raw = await AsyncStorage.getItem(DELETED_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
+export async function recordDeleted(id) {
+  const deleted = await loadDeleted();
+  deleted[id] = Date.now();
+  await AsyncStorage.setItem(DELETED_KEY, JSON.stringify(trimDeleted(deleted)));
+}
+
+export function trimDeleted(deleted) {
+  const entries = Object.entries(deleted);
+  if (entries.length <= DELETED_MAX) return deleted;
+  entries.sort((a, b) => b[1] - a[1]);
+  return Object.fromEntries(entries.slice(0, DELETED_MAX));
+}
+
+// Whole-library write from a cloud merge. Quiet: no change notification.
+export async function writeMerged({ decks, exams, streak, deleted }) {
+  await AsyncStorage.multiSet([
+    [DECKS_KEY, JSON.stringify(decks)],
+    [EXAMS_KEY, JSON.stringify(exams)],
+    [STREAK_KEY, JSON.stringify(streak)],
+    [DELETED_KEY, JSON.stringify(trimDeleted(deleted))],
+  ]);
+}
+
+// Raw streak, no staleness check - the cloud merge compares dates itself.
+export async function loadStreakRaw() {
+  try {
+    const raw = await AsyncStorage.getItem(STREAK_KEY);
+    return raw ? JSON.parse(raw) : { count: 0, last: null };
+  } catch {
+    return { count: 0, last: null };
+  }
 }
