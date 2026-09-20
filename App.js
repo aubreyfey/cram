@@ -20,6 +20,7 @@ import SettingsScreen from './src/screens/SettingsScreen';
 import FeedbackScreen from './src/screens/FeedbackScreen';
 import ExamEditorScreen from './src/screens/ExamEditorScreen';
 import DocumentScreen from './src/screens/DocumentScreen';
+import BoardScreen from './src/screens/BoardScreen';
 
 import { MAX_PAGES, generateDeck } from './src/lib/api';
 import { pickDocument, pickFromLibrary } from './src/lib/pickers';
@@ -438,6 +439,15 @@ function App() {
               </Screen>
             )}
 
+            {screen === 'board' && (
+              <Screen preset="modal">
+                <BoardScreen
+                  onPrivateNote={() => setScreen('feedback')}
+                  onClose={() => setScreen(activeDeck ? 'study' : 'library')}
+                />
+              </Screen>
+            )}
+
             {screen === 'feedback' && (
               <Screen preset="modal">
                 <FeedbackScreen
@@ -454,7 +464,7 @@ function App() {
                   tier={quota.admin ? 'admin' : pro ? 'pro' : 'free'}
                   deckCount={decks.length}
                   onImport={importDecks}
-                  onFeedback={() => setScreen('feedback')}
+                  onFeedback={() => setScreen('board')}
                   onClose={() => setScreen('library')}
                 />
               </Screen>
@@ -509,7 +519,7 @@ function App() {
                   deck={activeDeck}
                   onUpdateDeck={updateDeck}
                   onAddPages={appendToDeck}
-                  onFeedback={() => setScreen('feedback')}
+                  onFeedback={() => setScreen('board')}
                   onRename={(d) => setRenaming(d)}
                   onPaywall={(reason) => {
                     setPaywallReason(reason);

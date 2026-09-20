@@ -72,7 +72,9 @@
       "unlockAll": false,
       "siteUrl": "https://cram.vercel.app",
       "feedbackEmail": "",
-      "sentryDsn": ""
+      "sentryDsn": "",
+      "supabaseUrl": "",
+      "supabaseAnonKey": ""
     },
     "web": {
       "favicon": "./assets/favicon.png"

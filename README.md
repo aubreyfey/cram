@@ -208,10 +208,26 @@ just "more of the same". The check lives in `canUseDocuments()` in
 - **Paste notes, let the AI write the questions.** In the paste box, once
   there is a paragraph or more, "Write the questions for me" sends the text to
   the model. Same quota and paywall as a scan; about a tenth of the cost.
-- **Feedback.** Settings → "What should Cram do next?", and a quiet link on
-  the deck-finished screen. Goes to `/api/feedback` (GitHub issues if
-  configured, server logs otherwise); with no server it falls back to email
-  via `extra.feedbackEmail` in app.json - set that before launch.
+- **The board: Feedback, Roadmap, Updates.** Settings → "Feedback, roadmap and
+  updates", or the link on the deck-finished screen. Anyone can read. Posting
+  and upvoting need a sign-in - an email and a 6-digit code, no password.
+  Every post has a status (Pending, Planned, In progress, Done, Not planned)
+  and can carry a reply from you; Roadmap groups the planned / in-progress /
+  done ones; Updates is the changelog. "Something broke?" inside it still
+  sends a private note to `/api/feedback`.
+
+  It runs on Supabase. Until it is set up the board is a **demo on this
+  device** (labelled as such, seeded with example posts, any email + any
+  code signs in). To make it real:
+  1. supabase.com → New project (free). Authentication → Providers → Email:
+     turn **off** "Confirm email", leave the OTP/magic link on.
+  2. SQL Editor → paste `supabase/schema.sql` → Run.
+  3. Project Settings → API: copy the URL and the `anon` key into `app.json`
+     → `extra.supabaseUrl` / `extra.supabaseAnonKey`. The anon key is meant
+     to ship in apps; row-level security is what protects the data.
+  4. Change a status from the dashboard (Table editor → feedback → status,
+     note), or `select set_status('<id>', 'planned', 'Coming in October');`
+     in the SQL editor. Post an update by adding a row to `updates`.
 - **Read the PDF first.** Picking a PDF opens it in the app before anything
   is sent - reading is free; "Make cards" underneath is where the Pro gate
   sits. A deck made from a PDF keeps a copy (documents directory, deleted

@@ -178,8 +178,8 @@ export default function SettingsScreen({ onClose, onImport, onFeedback, tier, de
 
         <Section title="HELP US">
           <Row
-            label="What should Cram do next?"
-            sub="Missing something? Tell us. It gets read."
+            label="Feedback, roadmap and updates"
+            sub="Suggest things, upvote what you want, see what's coming"
             onPress={onFeedback}
           />
         </Section>
