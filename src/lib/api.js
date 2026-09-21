@@ -1,7 +1,7 @@
 import { Platform } from 'react-native';
 import Constants from 'expo-constants';
 import { attachFigures } from './figures';
-import * as ImageManipulator from 'expo-image-manipulator';
+import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import { readBase64 } from './files';
 import { getAdminCode } from './storage';
 
@@ -40,11 +40,8 @@ export class ApiError extends Error {
 // upload; 1400px wide is still comfortably legible to the model for
 // handwriting and keeps the round trip inside our budget.
 async function prepareImage(uri) {
-  const result = await ImageManipulator.manipulateAsync(
-    uri,
-    [{ resize: { width: 1400 } }],
-    { compress: 0.7, format: ImageManipulator.SaveFormat.JPEG, base64: true },
-  );
+  const ref = await ImageManipulator.manipulate(uri).resize({ width: 1400 }).renderAsync();
+  const result = await ref.saveAsync({ compress: 0.7, format: SaveFormat.JPEG, base64: true });
   return { data: result.base64, mediaType: 'image/jpeg' };
 }
 
