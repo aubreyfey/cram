@@ -62,6 +62,7 @@ src/lib/
   account.js               sign-in: email + one-time code (Supabase)
   srs.js                   trimmed SM-2 scheduling
   share.js                 deck -> plain text for the share sheet
+  shareLink.js             deck -> a link (<site>/d/<id>) and back
   entitlements.js          plans + the RevenueCat seam  ← see TODO
 assets/mascot/             Volt as clean SVG: transparent + app-icon variant
 public/                    terms + privacy, copied into the web build
@@ -255,6 +256,17 @@ just "more of the same". The check lives in `canUseDocuments()` in
   Most pages produce none, which is right. Files live in the app's documents
   folder and go with the deck when it is deleted; the cloud backup carries
   the card, not the picture.
+- **Share a deck by link.** Share → "As a link". The API stores a cards-only
+  copy (no schedule, no pictures) under a random id in Supabase - via the
+  service role, so the anon key in the app can never write or list them -
+  and the link is `<siteUrl>/d/<id>`. Opened in a browser, the web build
+  shows the deck with "Save to my decks"; opened on a phone with Cram,
+  `cram://d/<id>` lands on the same screen. Saving makes a fresh deck with
+  its own ids - the friend starts from zero, and the sharer opening their
+  own link does not clobber their progress. Needs `SUPABASE_URL` +
+  `SUPABASE_SERVICE_KEY` on the server; unset, the option says so and text
+  and file sharing still work. Universal links (the https link opening the
+  app directly) need an associated-domains file and are not set up.
 - **Cloud backup.** Settings → Account → "Sign in to back up". Same email +
   code sign-in as the board, same Supabase project, same session. Once in,
   decks, exams, talk transcripts, streak and name are copied to a row that

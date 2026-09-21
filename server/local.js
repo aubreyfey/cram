@@ -21,8 +21,9 @@ import feedback from './api/feedback.js';
 import explain from './api/explain.js';
 import guide from './api/guide.js';
 import youtube from './api/youtube.js';
+import share from './api/share.js';
 
-const ROUTES = { '/api/generate': generate, '/api/admin': admin, '/api/feedback': feedback, '/api/explain': explain, '/api/guide': guide, '/api/youtube': youtube };
+const ROUTES = { '/api/generate': generate, '/api/admin': admin, '/api/feedback': feedback, '/api/explain': explain, '/api/guide': guide, '/api/youtube': youtube, '/api/share': share };
 
 const PORT = Number(process.env.PORT) || 3000;
 const MAX_BODY = 40 * 1024 * 1024;
@@ -91,7 +92,7 @@ const server = http.createServer(async (req, res) => {
   // cross-origin request and needs CORS. Wide open is fine for localhost.
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, x-cram-key, x-cram-admin, x-cram-tier');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
 
   if (req.method === 'OPTIONS') {
     res.statusCode = 204;
@@ -107,7 +108,7 @@ const server = http.createServer(async (req, res) => {
   adapt(res);
 
   try {
-    req.body = await readBody(req);
+    req.body = req.method === 'GET' ? {} : await readBody(req);
   } catch (e) {
     return res.status(400).json({ error: e.message });
   }

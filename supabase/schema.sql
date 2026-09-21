@@ -119,3 +119,20 @@ create policy "own backup: create" on public.backups for insert with check (auth
 create policy "own backup: update" on public.backups for update
   using (auth.uid() = user_id) with check (auth.uid() = user_id);
 create policy "own backup: delete" on public.backups for delete using (auth.uid() = user_id);
+
+-- Shared decks --------------------------------------------------------------
+--
+-- "Share as a link" from a deck. A stripped copy (cards only) under a random
+-- id, written and read by the API with the service role - see
+-- server/api/share.js. RLS is on with no policies, so the anon key in the
+-- app can neither read nor list these; the API is the only door.
+
+create table public.shared_decks (
+  id          text primary key,
+  created_at  timestamptz not null default now(),
+  title       text not null,
+  cards       integer not null,
+  deck        jsonb not null
+);
+
+alter table public.shared_decks enable row level security;

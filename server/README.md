@@ -32,6 +32,8 @@ Set these in the Vercel dashboard (Settings -> Environment Variables):
 | `FEEDBACK_GITHUB_TOKEN` | optional; a fine-grained token with Issues: write on the repo below |
 | `FEEDBACK_GITHUB_REPO` | optional; `owner/name` — in-app feedback lands there as issues. Use a **private** repo; people type their email in. Unset = feedback goes to the function logs. |
 | `CRAM_ADMIN_KEY` | any long random string; the code you type into the app to turn on admin mode |
+| `SUPABASE_URL` | optional; the same project the app uses. With `SUPABASE_SERVICE_KEY`, turns on "share as a link" (`/api/share`). The service key stays here and never ships in the app. |
+| `SUPABASE_SERVICE_KEY` | optional; Project Settings → API → `service_role`. Unset = links are off and the app says so. |
 
 `CRAM_ADMIN_KEY` is checked by `POST /api/admin` and, as the `x-cram-admin`
 header, lets a request skip the per-IP rate limit. It never ships in the app.

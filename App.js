@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { AppState, StyleSheet, View } from 'react-native';
+import { AppState, Linking, StyleSheet, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -29,6 +29,7 @@ import ExamScreen from './src/screens/ExamScreen';
 import TalkScreen from './src/screens/TalkScreen';
 import TalksScreen from './src/screens/TalksScreen';
 import VideoScreen from './src/screens/VideoScreen';
+import SharedDeckScreen from './src/screens/SharedDeckScreen';
 
 import { MAX_PAGES, generateDeck, generateGuide } from './src/lib/api';
 import { pickDocument, pickFromLibrary } from './src/lib/pickers';
@@ -52,6 +53,7 @@ import { mergeDecks, readDeckFile } from './src/lib/backup';
 import { configureNotifications, rearmNag } from './src/lib/reminders';
 import { dropSource, keepSource } from './src/lib/sources';
 import { deleteFigures } from './src/lib/figures';
+import { clearShareUrl, deckFromShared, fetchSharedDeck, parseShareUrl } from './src/lib/shareLink';
 import { deleteTalk, loadTalks, saveTalk } from './src/lib/talks';
 import { migrate } from './src/lib/migrations';
 import { onMerged, startCloud, sync as syncCloud } from './src/lib/cloud';
@@ -103,6 +105,10 @@ function App() {
   // Photos waiting on the review screen. Every capture and every library pick
   // lands here first; a deck is made from all of them at once.
   const [pages, setPages] = useState([]);
+  // A deck someone sent by link: { loading } | { error } | { deck }. Set
+  // from the URL the app was opened with, on any platform.
+  const [shared, setShared] = useState(null);
+  const [savingShared, setSavingShared] = useState(false);
 
   const abortRef = useRef(null);
   const activeRef = useRef(null);
@@ -145,6 +151,42 @@ function App() {
       stopMerged();
     };
   }, [refresh]);
+
+  // Links: <site>/d/<id> on the web, cram://d/<id> in the app. Whatever
+  // screen was up gives way to the shared deck; Close returns to camera.
+  useEffect(() => {
+    const open = async (url) => {
+      const id = parseShareUrl(url);
+      if (!id) return;
+      setShared({ loading: true });
+      setScreen('shared');
+      try {
+        setShared({ deck: await fetchSharedDeck(id) });
+      } catch (e) {
+        setShared({ error: e.message });
+      }
+    };
+    Linking.getInitialURL()
+      .then((u) => u && open(u))
+      .catch(() => {});
+    const sub = Linking.addEventListener('url', ({ url }) => open(url));
+    return () => sub.remove();
+  }, []);
+
+  const saveShared = useCallback(async () => {
+    if (!shared?.deck) return;
+    setSavingShared(true);
+    try {
+      const deck = deckFromShared(shared.deck);
+      setDecks(await saveDeck(deck));
+      setShared(null);
+      clearShareUrl();
+      setActiveDeck(deck);
+      setScreen('study');
+    } finally {
+      setSavingShared(false);
+    }
+  }, [shared]);
 
   const run = useCallback(
     async (src) => {
@@ -541,6 +583,21 @@ function App() {
                   }}
                   onMakeCards={cardsFromTalk}
                   onClose={() => setScreen(talkContext?.back ?? 'library')}
+                />
+              </Screen>
+            )}
+
+            {screen === 'shared' && (
+              <Screen preset="modal">
+                <SharedDeckScreen
+                  state={shared}
+                  saving={savingShared}
+                  onSave={saveShared}
+                  onClose={() => {
+                    setShared(null);
+                    clearShareUrl();
+                    setScreen('camera');
+                  }}
                 />
               </Screen>
             )}
