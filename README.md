@@ -56,6 +56,7 @@ src/components/
   PrimaryButton.js
 src/lib/
   api.js                   resize, upload, parse
+  figures.js               crops the diagram a card is about out of the photo
   storage.js               decks, free-tier meter, streak (AsyncStorage)
   cloud.js                 cloud backup: pull, merge, push, per account
   account.js               sign-in: email + one-time code (Supabase)
@@ -245,6 +246,15 @@ just "more of the same". The check lives in `canUseDocuments()` in
   4. Change a status from the dashboard (Table editor → feedback → status,
      note), or `select set_status('<id>', 'planned', 'Coming in October');`
      in the SQL editor. Post an update by adding a row to `updates`.
+- **Pictures on cards.** When a card is about a diagram, a graph, a labelled
+  structure or a reaction scheme, the model says so and points at the region
+  of the page. The app crops it from the original photo (full resolution,
+  not the upload) and puts it on the card - on the front when the question
+  is about the picture ("which structure is marked B"), on the back when the
+  picture is the answer. Photos only; PDF and pasted text never get one.
+  Most pages produce none, which is right. Files live in the app's documents
+  folder and go with the deck when it is deleted; the cloud backup carries
+  the card, not the picture.
 - **Cloud backup.** Settings → Account → "Sign in to back up". Same email +
   code sign-in as the board, same Supabase project, same session. Once in,
   decks, exams, talk transcripts, streak and name are copied to a row that

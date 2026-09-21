@@ -10,6 +10,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
+import Figure from './Figure';
 import { colors, motion, radius, shadow, space, type } from '../theme';
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
@@ -152,14 +153,23 @@ const Flashcard = forwardRef(function Flashcard({ card, onRate, onExplain, depth
       >
         <Animated.View style={[styles.face, styles.front, frontStyle]}>
           <Text style={styles.kicker}>QUESTION</Text>
-          <Text style={styles.prompt}>{card.front}</Text>
+          <Figure figure={card.figure} side="front" height={140} />
+          <Text
+            style={[styles.prompt, card.figure?.side === 'front' && styles.promptWithFigure]}
+            numberOfLines={card.figure?.side === 'front' ? 4 : undefined}
+          >
+            {card.front}
+          </Text>
           {card.hint ? <Text style={styles.hint}>{card.hint}</Text> : null}
           {isTop ? <Text style={styles.tapCue}>tap to flip</Text> : null}
         </Animated.View>
 
         <Animated.View style={[styles.face, styles.back, backStyle]}>
           <Text style={[styles.kicker, { color: colors.accent }]}>ANSWER</Text>
-          <Text style={styles.answer}>{card.back}</Text>
+          <Figure figure={card.figure} side="back" height={150} />
+          <Text style={styles.answer} numberOfLines={card.figure?.side === 'back' ? 5 : undefined}>
+            {card.back}
+          </Text>
           {/* "Why?" - a tap here must not flip the card back, so it is its
               own Pressable and the tap gesture is told to ignore it. */}
           {isTop && onExplain ? (
@@ -211,6 +221,8 @@ const styles = StyleSheet.create({
     left: space(7),
   },
   prompt: { ...type.card, color: colors.text },
+  // With a picture above it the question has less room; drop a size.
+  promptWithFigure: { fontSize: 19, lineHeight: 26 },
   answer: { ...type.body, fontSize: 19, lineHeight: 27, color: colors.text },
   hint: { ...type.body, color: colors.textDim, marginTop: space(4), fontSize: 14 },
   why: {

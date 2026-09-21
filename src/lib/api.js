@@ -1,5 +1,6 @@
 import { Platform } from 'react-native';
 import Constants from 'expo-constants';
+import { attachFigures } from './figures';
 import * as ImageManipulator from 'expo-image-manipulator';
 import { readBase64 } from './files';
 import { getAdminCode } from './storage';
@@ -144,19 +145,30 @@ export async function generateDeck(source, { signal, tier = 'free' } = {}) {
     throw new ApiError("Couldn't find anything to study in that.", 'empty');
   }
 
+  const stamp = Date.now();
+  let cards = result.cards.map((c, i) => ({
+    id: `card_${stamp}_${i}`,
+    front: c.front,
+    back: c.back,
+    hint: c.hint || null,
+    figure: c.figure || null,
+  }));
+  // Cards the model tied to a diagram get the diagram, cropped from the
+  // original photo. Only photos: text and PDF sources never carry a box.
+  if (source.kind !== 'text' && source.kind !== 'pdf') {
+    cards = await attachFigures(cards, source.pages ?? [{ uri: source.uri }]);
+  } else {
+    cards = cards.map((c) => ({ ...c, figure: null }));
+  }
+
   return {
-    id: `deck_${Date.now()}`,
+    id: `deck_${stamp}`,
     title: result.title || source.name || 'Untitled deck',
     subject: result.subject || null,
-    createdAt: Date.now(),
+    createdAt: stamp,
     sourceKind: source.kind,
     pageCount: source.pages?.length ?? 1,
-    cards: result.cards.map((c, i) => ({
-      id: `card_${Date.now()}_${i}`,
-      front: c.front,
-      back: c.back,
-      hint: c.hint || null,
-    })),
+    cards,
   };
 }
 

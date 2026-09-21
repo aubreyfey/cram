@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
+import Figure from './Figure';
 import PrimaryButton from './PrimaryButton';
 import { RATING } from '../lib/srs';
 import { colors, radius, space, type } from '../theme';
@@ -74,6 +75,7 @@ export default function WriteStage({ card, onRate }) {
       <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
         <View style={styles.question}>
           <Text style={styles.kicker}>QUESTION</Text>
+          <Figure figure={card.figure} side="front" height={120} />
           <Text style={styles.prompt}>{card.front}</Text>
           {card.hint ? <Text style={styles.hint}>{card.hint}</Text> : null}
         </View>
@@ -109,6 +111,7 @@ export default function WriteStage({ card, onRate }) {
                   <Text style={[styles.verdict, { color: VERDICT.color }]}>{VERDICT.label}</Text>
                 ) : null}
               </View>
+              <Figure figure={card.figure} side="back" height={120} />
               <Text style={styles.answerText}>{card.back}</Text>
             </View>
             <Text style={styles.selfGrade}>Be honest - did you have it?</Text>

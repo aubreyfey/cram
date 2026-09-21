@@ -51,6 +51,7 @@ import { makeBiologySampleDeck, makeSampleDeck } from './src/lib/sampleDeck';
 import { mergeDecks, readDeckFile } from './src/lib/backup';
 import { configureNotifications, rearmNag } from './src/lib/reminders';
 import { dropSource, keepSource } from './src/lib/sources';
+import { deleteFigures } from './src/lib/figures';
 import { deleteTalk, loadTalks, saveTalk } from './src/lib/talks';
 import { migrate } from './src/lib/migrations';
 import { onMerged, startCloud, sync as syncCloud } from './src/lib/cloud';
@@ -733,7 +734,9 @@ function App() {
                     setScreen('exam');
                   }}
                   onDelete={async (id) => {
-                    await dropSource(decks.find((d) => d.id === id));
+                    const gone = decks.find((d) => d.id === id);
+                    await dropSource(gone);
+                    await deleteFigures(gone);
                     setDecks(await deleteDeck(id));
                   }}
                   onLoadSample={async () => {

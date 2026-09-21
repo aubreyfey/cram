@@ -42,6 +42,19 @@ const DeckSchema = z.object({
       }),
     )
     .describe('Flashcards covering the material'),
+  figures: z
+    .array(
+      z.object({
+        card: z.number().int().describe('Index into cards, 0-based'),
+        page: z.number().int().describe('Which input image, 1-based, in the order given'),
+        x: z.number().describe('Left edge of the region, as a fraction 0-1 of the image width'),
+        y: z.number().describe('Top edge, as a fraction 0-1 of the image height'),
+        w: z.number().describe('Width, fraction 0-1'),
+        h: z.number().describe('Height, fraction 0-1'),
+        side: z.enum(['front', 'back']).describe('front: the question is about the picture. back: the picture is the answer.'),
+      }),
+    )
+    .describe('Cards that need a picture from the page. Empty array when none do.'),
 });
 
 const SYSTEM = `You turn study material into flashcards.
@@ -70,6 +83,23 @@ should yield roughly 8 to 15 cards per substantive page, up to a maximum of 120.
 
 If there is no study content at all (a face, a wall, a menu, an invoice), return
 an empty cards array rather than inventing material.`;
+
+// Only when the input is photographs: the app crops the region out of the
+// original image and puts it on the card, so the box has to be one the
+// student would recognise as the figure, not a sliver of it.
+const FIGURES = `
+
+Figures: some cards are about a diagram, a labelled structure, a graph, a
+reaction scheme or a table that words cannot carry - "which structure is
+marked B", "what does this curve show". For those, and only those, add an
+entry to figures pointing at the region of the image the card needs. Give
+the whole figure including its labels, with a little margin, as fractions of
+the image (x, y from the top-left; w, h). Put it on the front when the
+question is about the picture, on the back when the picture is the answer.
+Text-only cards get no figure. Most pages have none; a page of prose has
+none. Never point at a region that is just text.`;
+
+const MAX_FIGURES = 12;
 
 // In-memory rate limit. Serverless instances are ephemeral and not shared, so
 // this only catches the naive case. See README - real auth is required before
@@ -164,13 +194,15 @@ export default async function handler(req, res) {
           ? `Make flashcards from these ${blocks.length} pages. They are consecutive pages of the same material, in order - treat them as one document.`
           : 'Make flashcards from this page.',
     multi: kind === 'document' || pages.length > 1,
+    // Photos only: a PDF page is not an image the app can crop from.
+    figures: kind === 'image' ? pages.length : 0,
   });
 }
 
 // The model call, shared by every input shape. `blocks` are the content
 // blocks (images, a document, or a text block of notes), `ask` the one-line
 // instruction that follows them.
-async function complete(res, model, { blocks, ask, multi }) {
+async function complete(res, model, { blocks, ask, multi, figures = 0 }) {
   try {
     const response = await client.messages.parse({
       model,
@@ -178,7 +210,7 @@ async function complete(res, model, { blocks, ask, multi }) {
       // cards, and 120 cards is ~10k output tokens. Stay under ~21k: above
       // that the SDK refuses non-streaming requests outright.
       max_tokens: multi ? 20000 : 12000,
-      system: SYSTEM,
+      system: figures ? SYSTEM + FIGURES : SYSTEM,
       // Low effort: this is extraction, not reasoning, and the product promise
       // is a fast turnaround. Raise to "medium" only if card quality
       // measurably drops - it costs latency.
@@ -204,12 +236,21 @@ async function complete(res, model, { blocks, ask, multi }) {
       return res.status(502).json({ error: 'parse_failed' });
     }
 
+    // Figures are keyed by card index, so attach them before the filter
+    // below shifts anything. Sanity-check every box: the model is asked for
+    // fractions, but a bad one would crop garbage or crash the client.
+    const byCard = new Map();
+    for (const f of figures ? (deck.figures || []).slice(0, MAX_FIGURES) : []) {
+      const box = cleanBox(f, figures);
+      if (box && !byCard.has(f.card)) byCard.set(f.card, box);
+    }
+
     return res.status(200).json({
       title: deck.title,
       subject: deck.subject || null,
       cards: deck.cards
-        .filter((c) => c.front?.trim() && c.back?.trim())
-        .map((c) => ({ front: c.front, back: c.back, hint: c.hint || null })),
+        .map((c, i) => ({ front: c.front, back: c.back, hint: c.hint || null, figure: byCard.get(i) || null }))
+        .filter((c) => c.front?.trim() && c.back?.trim()),
     });
   } catch (err) {
     if (err instanceof Anthropic.RateLimitError) {
@@ -226,4 +267,18 @@ async function complete(res, model, { blocks, ask, multi }) {
     console.error('Unexpected error:', err);
     return res.status(500).json({ error: 'internal_error' });
   }
+}
+
+// A usable crop box or null. Fractions clamped to the image, page within
+// the batch, and big enough to be a figure rather than a stray mark.
+function cleanBox(f, pageCount) {
+  const n = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : NaN);
+  const page = n(f.page);
+  if (!(page >= 1 && page <= pageCount)) return null;
+  const x = Math.min(Math.max(n(f.x), 0), 1);
+  const y = Math.min(Math.max(n(f.y), 0), 1);
+  const w = Math.min(n(f.w), 1 - x);
+  const h = Math.min(n(f.h), 1 - y);
+  if (!(w >= 0.08 && h >= 0.05)) return null;
+  return { page, x, y, w, h, side: f.side === 'front' ? 'front' : 'back' };
 }

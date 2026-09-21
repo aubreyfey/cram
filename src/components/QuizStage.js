@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import Figure from './Figure';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 import { RATING } from '../lib/srs';
@@ -55,6 +56,7 @@ export default function QuizStage({ card, pool, onRate }) {
     <View style={styles.root}>
       <View style={styles.question}>
         <Text style={styles.kicker}>QUESTION</Text>
+        <Figure figure={card.figure} side="front" height={120} />
         <Text style={styles.prompt}>{card.front}</Text>
       </View>
 
