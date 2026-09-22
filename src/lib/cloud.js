@@ -189,7 +189,8 @@ async function snapshot() {
   return { cram: FORMAT, decks, exams, talks, streak, deleted, profile: { name: profile.name || '' } };
 }
 
-function merge(local, remote) {
+// Exported for the tests; nothing else calls it directly.
+export function merge(local, remote) {
   const deleted = trimDeleted({ ...(remote.deleted || {}), ...local.deleted });
   const alive = (x) => !deleted[x.id];
 

@@ -36,6 +36,19 @@ developing: on a phone in Expo Go the app swaps `localhost` for your laptop's
 address automatically (it borrows it from Metro). Both devices must be on the
 same wifi. Set it to the deployed URL only for a production build.
 
+## Tests
+
+```bash
+npm test
+```
+
+Node's own runner, no Jest. `tests/loader.mjs` swaps the native modules
+(`react-native`, AsyncStorage, `expo-*`) for in-memory stubs so the real
+`src/lib` files load untouched. Covered: the SM-2 schedule, paste parsing,
+the cloud merge rules, tombstones and change notifications, file-import
+merging, share links, Markdown export, and the server's share endpoint and
+figure-box validation. Screens are not tested; that is what the phone is for.
+
 ## Layout
 
 ```

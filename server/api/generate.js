@@ -273,7 +273,7 @@ async function complete(res, model, { blocks, ask, multi, figures = 0 }) {
 
 // A usable crop box or null. Fractions clamped to the image, page within
 // the batch, and big enough to be a figure rather than a stray mark.
-function cleanBox(f, pageCount) {
+export function cleanBox(f, pageCount) {
   const n = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : NaN);
   const page = n(f.page);
   if (!(page >= 1 && page <= pageCount)) return null;
