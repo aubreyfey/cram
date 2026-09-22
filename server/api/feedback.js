@@ -1,3 +1,5 @@
+import { cors } from '../lib/cors.js';
+
 // In-app feedback. Lands as a GitHub issue when FEEDBACK_GITHUB_TOKEN and
 // FEEDBACK_GITHUB_REPO (owner/name) are set; otherwise it is logged, which
 // on Vercel means it shows up in the function logs. Either way the app gets
@@ -22,6 +24,7 @@ function clip(v, n) {
 }
 
 export default async function handler(req, res) {
+  if (cors(req, res)) return;
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'method_not_allowed' });
   }

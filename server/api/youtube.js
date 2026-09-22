@@ -1,3 +1,5 @@
+import { cors } from '../lib/cors.js';
+
 // A YouTube link in, the video's captions out. No API key: the official
 // Data API only hands captions to the video's owner, so this reads the
 // public caption track the player itself loads. Auto-generated captions
@@ -100,6 +102,7 @@ async function transcriptFor(track) {
 }
 
 export default async function handler(req, res) {
+  if (cors(req, res)) return;
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'method_not_allowed' });
   }

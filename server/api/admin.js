@@ -1,4 +1,5 @@
 import { timingSafeEqual } from 'node:crypto';
+import { cors } from '../lib/cors.js';
 
 // Verifies an admin code. The code itself lives only in CRAM_ADMIN_KEY on the
 // server; the app stores the code after one successful check and sends it as
@@ -13,6 +14,7 @@ export function isAdminCode(code) {
 }
 
 export default async function handler(req, res) {
+  if (cors(req, res)) return;
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'method_not_allowed' });
   }

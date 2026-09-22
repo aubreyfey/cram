@@ -2,6 +2,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { z } from 'zod';
 import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod';
 import { isAdminCode } from './admin.js';
+import { cors } from '../lib/cors.js';
 
 const client = new Anthropic();
 
@@ -115,6 +116,7 @@ function rateLimited(ip) {
 }
 
 export default async function handler(req, res) {
+  if (cors(req, res)) return;
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'method_not_allowed' });
   }

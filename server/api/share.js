@@ -10,6 +10,7 @@
 // says so.
 
 import { randomBytes } from 'node:crypto';
+import { cors } from '../lib/cors.js';
 
 const URL = process.env.SUPABASE_URL || '';
 const KEY = process.env.SUPABASE_SERVICE_KEY || '';
@@ -49,13 +50,9 @@ const headers = () => ({
 });
 
 export default async function handler(req, res) {
-  // The web build opens links from the browser, cross-origin to this API.
   // GET is public by design (the id is the secret); POST still needs the
   // app key.
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, x-cram-key');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  if (req.method === 'OPTIONS') return res.status(204).end();
+  if (cors(req, res, 'GET, POST, OPTIONS')) return;
 
   if (!URL || !KEY) return res.status(503).json({ error: 'not_configured' });
 

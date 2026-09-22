@@ -2,6 +2,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { z } from 'zod';
 import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod';
 import { isAdminCode } from './admin.js';
+import { cors } from '../lib/cors.js';
 
 // A study guide for one exam, written from the cards the student already
 // has. Not a summary of a textbook - a map of *their* material: what the
@@ -47,6 +48,7 @@ function rateLimited(ip) {
 }
 
 export default async function handler(req, res) {
+  if (cors(req, res)) return;
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'method_not_allowed' });
   }
