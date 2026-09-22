@@ -92,7 +92,7 @@ export function Photos({ images, gap = space(1.5), radiusSize = radius.md }) {
   if (n === 1) {
     const img = images[0];
     const ratio = img.width && img.height ? Math.max(img.width / img.height, 0.8) : 4 / 3;
-    return <NoteImage image={img} style={[styles.photo, { aspectRatio: ratio, borderRadius: radiusSize }]} />;
+    return <NoteImage image={img} style={[styles.single, { aspectRatio: ratio, borderRadius: radiusSize }]} />;
   }
   if (n === 2 || n === 3) {
     return (
@@ -171,7 +171,8 @@ const styles = StyleSheet.create({
   title: { ...type.body, fontSize: 18, fontWeight: '700', color: colors.text },
   text: { ...type.body, color: colors.textDim },
   row: { flexDirection: 'row' },
-  photo: { flex: 1, width: '100%', backgroundColor: colors.surface, overflow: 'hidden' },
+  photo: { flex: 1, backgroundColor: colors.surface, overflow: 'hidden' },
+  single: { width: '100%', backgroundColor: colors.surface, overflow: 'hidden' },
   square: { width: '100%', aspectRatio: 1 },
   missing: { backgroundColor: colors.surface },
   more: { ...StyleSheet.absoluteFillObject, backgroundColor: '#000000AA', alignItems: 'center', justifyContent: 'center' },
