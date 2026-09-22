@@ -3,7 +3,8 @@ import Constants from 'expo-constants';
 import { attachFigures } from './figures';
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import { readBase64 } from './files';
-import { getAdminCode } from './storage';
+import { getAdminCode, getDeviceId } from './storage';
+import { getAccessToken } from './account';
 
 // On a phone, "localhost" is the phone. In development Metro already knows
 // the laptop's LAN address (it is how the phone loaded the bundle), so borrow
@@ -34,6 +35,33 @@ export class ApiError extends Error {
     super(message);
     this.code = code;
   }
+}
+
+// Every call carries who is asking: the app key, the admin code if set, the
+// session token when signed in, a per-install device id otherwise, and the
+// phone's UTC offset so the server's day matches the phone's. The tier
+// header is kept for older servers; the current one ignores it.
+async function identityHeaders(tier) {
+  const [admin, token, device] = await Promise.all([getAdminCode(), getAccessToken().catch(() => null), getDeviceId()]);
+  return {
+    'Content-Type': 'application/json',
+    'x-cram-key': Constants.expoConfig?.extra?.appKey ?? '',
+    'x-cram-device': device,
+    'x-cram-tz': String(-new Date().getTimezoneOffset()),
+    ...(tier ? { 'x-cram-tier': tier } : {}),
+    ...(admin ? { 'x-cram-admin': admin } : {}),
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
+}
+
+// 402 is the server's quota wall - the same two answers checkQuota gives.
+function quotaError(res) {
+  return res.status === 402
+    ? res
+        .json()
+        .catch(() => ({}))
+        .then((b) => new ApiError(b.error === 'fair_use' ? "You've hit today's limit." : "You're out of free cards for today.", b.error === 'fair_use' ? 'fair_use' : 'quota'))
+    : null;
 }
 
 // Downscale before upload. A 12MP camera frame is ~4MB and adds seconds of
@@ -84,17 +112,12 @@ export async function generateDeck(source, { signal, tier = 'free' } = {}) {
     body = prepared.length === 1 ? prepared[0] : { pages: prepared };
   }
 
-  const admin = await getAdminCode();
+  const headers = await identityHeaders(tier);
   let res;
   try {
     res = await fetch(`${BASE_URL}/api/generate`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-cram-key': Constants.expoConfig?.extra?.appKey ?? '',
-        'x-cram-tier': tier,
-        ...(admin ? { 'x-cram-admin': admin } : {}),
-      },
+      headers,
       body: JSON.stringify(body),
       signal,
     });
@@ -120,6 +143,7 @@ export async function generateDeck(source, { signal, tier = 'free' } = {}) {
     );
   }
 
+  if (res.status === 402) throw await quotaError(res);
   if (res.status === 429) {
     throw new ApiError("You're going fast. Give it a minute.", 'rate_limit');
   }
@@ -199,16 +223,12 @@ export async function verifyAdminCode(code) {
 // "Why?" on a card. Returns the explanation text; the caller caches it on
 // the card so this runs at most once per card.
 export async function explainCard(card, { subject, signal } = {}) {
-  const admin = await getAdminCode();
+  const headers = await identityHeaders();
   let res;
   try {
     res = await fetch(`${BASE_URL}/api/explain`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-cram-key': Constants.expoConfig?.extra?.appKey ?? '',
-        ...(admin ? { 'x-cram-admin': admin } : {}),
-      },
+      headers,
       body: JSON.stringify({ front: card.front, back: card.back, subject: subject || undefined }),
       signal,
     });
@@ -219,6 +239,7 @@ export async function explainCard(card, { subject, signal } = {}) {
       'network',
     );
   }
+  if (res.status === 402) throw new ApiError("That's today's free explanations. Pro doesn't count.", 'quota');
   if (res.status === 429) throw new ApiError('Give it a minute.', 'rate_limit');
   if (!res.ok) throw new ApiError("Couldn't explain that one. Try again.", 'server');
   const { explanation } = await res.json();
@@ -228,17 +249,12 @@ export async function explainCard(card, { subject, signal } = {}) {
 // A study guide for one exam, from its cards. The caller caches it on the
 // exam with the card count, so it is rewritten only when the decks change.
 export async function generateGuide({ title, cards }, { tier = 'free', signal } = {}) {
-  const admin = await getAdminCode();
+  const headers = await identityHeaders(tier);
   let res;
   try {
     res = await fetch(`${BASE_URL}/api/guide`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-cram-key': Constants.expoConfig?.extra?.appKey ?? '',
-        'x-cram-tier': tier,
-        ...(admin ? { 'x-cram-admin': admin } : {}),
-      },
+      headers,
       body: JSON.stringify({ title, cards }),
       signal,
     });

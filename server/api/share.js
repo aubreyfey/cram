@@ -11,9 +11,7 @@
 
 import { randomBytes } from 'node:crypto';
 import { cors } from '../lib/cors.js';
-
-const URL = process.env.SUPABASE_URL || '';
-const KEY = process.env.SUPABASE_SERVICE_KEY || '';
+import { live, rest } from '../lib/supabase.js';
 
 const MAX = { title: 80, subject: 60, by: 40, front: 1000, back: 2000, hint: 300, cards: 300 };
 const MAX_BYTES = 256 * 1024;
@@ -43,25 +41,22 @@ function makeId() {
   return id;
 }
 
-const headers = () => ({
-  apikey: KEY,
-  Authorization: `Bearer ${KEY}`,
-  'Content-Type': 'application/json',
-});
-
 export default async function handler(req, res) {
   // GET is public by design (the id is the secret); POST still needs the
   // app key.
   if (cors(req, res, 'GET, POST, OPTIONS')) return;
 
-  if (!URL || !KEY) return res.status(503).json({ error: 'not_configured' });
+  if (!live) return res.status(503).json({ error: 'not_configured' });
 
   if (req.method === 'GET') {
     const id = clip(req.query?.id ?? new globalThis.URL(req.url, 'http://x').searchParams.get('id'), 32);
     if (!/^[A-Za-z0-9]{6,32}$/.test(id)) return res.status(400).json({ error: 'bad_id' });
-    const r = await fetch(`${URL}/rest/v1/shared_decks?id=eq.${id}&select=deck`, { headers: headers() });
-    if (!r.ok) return res.status(502).json({ error: 'store_error' });
-    const rows = await r.json();
+    let rows;
+    try {
+      rows = await rest(`shared_decks?id=eq.${id}&select=deck`);
+    } catch {
+      return res.status(502).json({ error: 'store_error' });
+    }
     if (!rows.length) return res.status(404).json({ error: 'not_found' });
     return res.status(200).json({ deck: rows[0].deck });
   }
@@ -91,13 +86,10 @@ export default async function handler(req, res) {
   if (JSON.stringify(deck).length > MAX_BYTES) return res.status(413).json({ error: 'too_large' });
 
   const id = makeId();
-  const r = await fetch(`${URL}/rest/v1/shared_decks`, {
-    method: 'POST',
-    headers: { ...headers(), Prefer: 'return=minimal' },
-    body: JSON.stringify({ id, title: deck.title, cards: cards.length, deck }),
-  });
-  if (!r.ok) {
-    console.error('shared_decks insert failed:', r.status, await r.text().catch(() => ''));
+  try {
+    await rest('shared_decks', { method: 'POST', body: { id, title: deck.title, cards: cards.length, deck }, headers: { Prefer: 'return=minimal' } });
+  } catch (e) {
+    console.error('shared_decks insert failed:', e.message);
     return res.status(502).json({ error: 'store_error' });
   }
   return res.status(200).json({ id });

@@ -231,6 +231,17 @@ function App() {
         setScreen('study');
       } catch (e) {
         if (e.name === 'AbortError') return;
+        // The server keeps its own count; treat its wall like our own.
+        if (e.code === 'quota') {
+          setPaywallReason('quota');
+          setScreen('paywall');
+          return;
+        }
+        if (e.code === 'fair_use') {
+          alert("That's a lot of scanning", "You've hit today's limit. It resets at midnight - and if you genuinely need more, tell us.");
+          setScreen('camera');
+          return;
+        }
         setError(e);
       }
     },

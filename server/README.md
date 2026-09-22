@@ -32,7 +32,7 @@ Set these in the Vercel dashboard (Settings -> Environment Variables):
 | `FEEDBACK_GITHUB_TOKEN` | optional; a fine-grained token with Issues: write on the repo below |
 | `FEEDBACK_GITHUB_REPO` | optional; `owner/name` — in-app feedback lands there as issues. Use a **private** repo; people type their email in. Unset = feedback goes to the function logs. |
 | `CRAM_ADMIN_KEY` | any long random string; the code you type into the app to turn on admin mode |
-| `SUPABASE_URL` | optional; the same project the app uses. With `SUPABASE_SERVICE_KEY`, turns on "share as a link" (`/api/share`). The service key stays here and never ships in the app. |
+| `SUPABASE_URL` | optional; the same project the app uses. With `SUPABASE_SERVICE_KEY`, turns on "share as a link" (`/api/share`) **and server-side quota** (`lib/quota.js`): the free tier is counted here per signed-in user or per install, and Pro comes from the `entitlements` table, never from a header. The service key stays here and never ships in the app. |
 | `SUPABASE_SERVICE_KEY` | optional; Project Settings → API → `service_role`. Unset = links are off and the app says so. |
 
 `CRAM_ADMIN_KEY` is checked by `POST /api/admin` and, as the `x-cram-admin`
@@ -87,8 +87,10 @@ heavy user at 60 scans a week costs $3.30 and is close to break-even.
 day, so a free user who never converts would cost about **$1.65/month** on
 Opus. A few thousand of those and the bill is the biggest line in the business.
 
-So the model is picked **per tier**. The app sends `x-cram-tier: free|pro`;
-subscribers and admins get `CRAM_MODEL`, everyone else gets `CRAM_MODEL_FREE`:
+So the model is picked **per tier**. With Supabase configured, the tier is
+decided here (`lib/quota.js`): admins by the admin code, subscribers by a
+row in the `entitlements` table, everyone else free. Subscribers and admins
+get `CRAM_MODEL`, everyone else gets `CRAM_MODEL_FREE`:
 
 | Variable | Default | Cost per scan |
 |---|---|---|
@@ -96,9 +98,21 @@ subscribers and admins get `CRAM_MODEL`, everyone else gets `CRAM_MODEL_FREE`:
 | `CRAM_MODEL_FREE` | `claude-haiku-4-5-20251001` | ~$0.011 |
 
 That puts a free user at about **$0.33/month** — and the free user who writes
-or pastes their own cards costs nothing at all. The tier header is a cost
-switch, not a security boundary: forging it gets a better model for the same
-10 cards a day. Real enforcement is receipt verification (below).
+or pastes their own cards costs nothing at all. The app still sends
+`x-cram-tier`, but it is ignored: forging it gets nothing.
+
+**The free tier is counted here, not just in the app.** Each request carries
+the Supabase session token when signed in, or a per-install device id
+otherwise; `usage` keeps one row per identity per day (the phone's day,
+from `x-cram-tz`), and the wall is `402 { error: "quota" }` at 10 cards or 3
+explanations, `402 { error: "fair_use" }` for a subscriber past 60 scans.
+The app treats both like its own local check. A reinstall resets a device
+id - that is the ceiling for a signed-out free tier - and without Supabase
+keys on the server nothing is counted here at all, as before.
+
+To make a tester Pro before billing exists:
+`insert into entitlements (user_id, tier) values ('<auth user id>', 'pro');`
+RevenueCat's webhook will write that row for real customers.
 
 Other levers, if you still need them: drop the free tier to 5 cards/day, or
 set `CRAM_MODEL_FREE=claude-sonnet-5` (~$0.022) if Haiku's cards on messy

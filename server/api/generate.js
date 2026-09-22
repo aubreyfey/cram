@@ -1,7 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { z } from 'zod';
 import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod';
-import { isAdminCode } from './admin.js';
+import { bump, check, identify } from '../lib/quota.js';
 import { cors } from '../lib/cors.js';
 
 const client = new Anthropic();
@@ -125,14 +125,14 @@ export default async function handler(req, res) {
     return res.status(401).json({ error: 'unauthorized' });
   }
 
-  // Admins (the people who run this thing) skip the per-IP limit - testing a
-  // build means firing off a dozen scans in a minute.
-  const admin = isAdminCode(req.headers['x-cram-admin']);
-  // The tier header is a cost switch, not a security boundary: a free user
-  // who forges "pro" gets a better model for their 10 cards a day, nothing
-  // more. Real enforcement is receipt verification - see README, Security.
-  const paid = admin || req.headers['x-cram-tier'] === 'pro';
-  const model = paid ? MODEL : MODEL_FREE;
+  // Who is this, and what have they had today. Admins skip every limit -
+  // testing a build means firing off a dozen scans in a minute. The tier
+  // comes from the entitlements table, never from a header (quota.js).
+  const who = await identify(req);
+  const admin = who.admin;
+  const model = who.tier === 'pro' ? MODEL : MODEL_FREE;
+  const wall = await check(who, req);
+  if (!wall.ok) return res.status(402).json({ error: wall.error });
   const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || 'unknown';
   if (!admin && rateLimited(ip)) {
     return res.status(429).json({ error: 'rate_limited' });
@@ -146,7 +146,7 @@ export default async function handler(req, res) {
     const text = body.text.trim();
     if (!text) return res.status(400).json({ error: 'missing_data' });
     if (text.length > MAX_TEXT_CHARS) return res.status(413).json({ error: 'too_large' });
-    return await complete(res, model, {
+    return await complete(res, model, who, req, {
       blocks: [{ type: 'text', text: `<notes>\n${text}\n</notes>` }],
       ask: 'Make flashcards from these notes.',
       multi: text.length > 4000,
@@ -187,7 +187,7 @@ export default async function handler(req, res) {
     blocks.push(kind === 'document' ? { type: 'document', source } : { type: 'image', source });
   }
 
-  return await complete(res, model, {
+  return await complete(res, model, who, req, {
     blocks,
     ask:
       kind === 'document'
@@ -204,7 +204,7 @@ export default async function handler(req, res) {
 // The model call, shared by every input shape. `blocks` are the content
 // blocks (images, a document, or a text block of notes), `ask` the one-line
 // instruction that follows them.
-async function complete(res, model, { blocks, ask, multi, figures = 0 }) {
+async function complete(res, model, who, req, { blocks, ask, multi, figures = 0 }) {
   try {
     const response = await client.messages.parse({
       model,
@@ -247,13 +247,13 @@ async function complete(res, model, { blocks, ask, multi, figures = 0 }) {
       if (box && !byCard.has(f.card)) byCard.set(f.card, box);
     }
 
-    return res.status(200).json({
-      title: deck.title,
-      subject: deck.subject || null,
-      cards: deck.cards
-        .map((c, i) => ({ front: c.front, back: c.back, hint: c.hint || null, figure: byCard.get(i) || null }))
-        .filter((c) => c.front?.trim() && c.back?.trim()),
-    });
+    const cards = deck.cards
+      .map((c, i) => ({ front: c.front, back: c.back, hint: c.hint || null, figure: byCard.get(i) || null }))
+      .filter((c) => c.front?.trim() && c.back?.trim());
+    // Counted after the fact: a scan that fails costs the student nothing.
+    bump(who, req, { cards: cards.length, scans: 1 });
+
+    return res.status(200).json({ title: deck.title, subject: deck.subject || null, cards });
   } catch (err) {
     if (err instanceof Anthropic.RateLimitError) {
       return res.status(429).json({ error: 'upstream_rate_limited' });

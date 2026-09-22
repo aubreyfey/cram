@@ -1,5 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
-import { isAdminCode } from './admin.js';
+import { bump, check, identify } from '../lib/quota.js';
 import { cors } from '../lib/cors.js';
 
 // "Why?" on the back of a card. Two or three sentences that explain the
@@ -39,11 +39,13 @@ export default async function handler(req, res) {
   if (process.env.CRAM_APP_KEY && req.headers['x-cram-key'] !== process.env.CRAM_APP_KEY) {
     return res.status(401).json({ error: 'unauthorized' });
   }
-  const admin = isAdminCode(req.headers['x-cram-admin']);
+  const who = await identify(req);
   const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || 'unknown';
-  if (!admin && rateLimited(ip)) {
+  if (!who.admin && rateLimited(ip)) {
     return res.status(429).json({ error: 'rate_limited' });
   }
+  const wall = await check(who, req, { explain: true });
+  if (!wall.ok) return res.status(402).json({ error: wall.error });
 
   const { front, back, subject } = req.body || {};
   if (typeof front !== 'string' || typeof back !== 'string' || !front.trim() || !back.trim()) {
@@ -73,6 +75,7 @@ export default async function handler(req, res) {
       .map((b) => b.text)
       .join('')
       .trim();
+    bump(who, req, { explains: 1 });
     if (!text) return res.status(502).json({ error: 'empty' });
     return res.status(200).json({ explanation: text });
   } catch (err) {

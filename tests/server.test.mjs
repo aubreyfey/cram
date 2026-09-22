@@ -21,7 +21,8 @@ globalThis.fetch = async (url, init = {}) => {
   }
   const id = u.searchParams.get('id').replace('eq.', '');
   const row = store.get(id);
-  return { ok: true, status: 200, json: async () => (row ? [{ deck: row.deck }] : []) };
+  const rows = row ? [{ deck: row.deck }] : [];
+  return { ok: true, status: 200, text: async () => JSON.stringify(rows), json: async () => rows };
 };
 
 // Vercel's req/res, minimally.

@@ -53,3 +53,11 @@ export function onAuthChange(fn) {
   const { data } = supabase().auth.onAuthStateChange((_event, session) => fn(toSession(session)));
   return () => data.subscription.unsubscribe();
 }
+
+// The session's access token, for the API to verify who is asking. Null
+// when signed out; the API then counts by device instead.
+export async function getAccessToken() {
+  if (!accountIsLive) return null;
+  const { data } = await supabase().auth.getSession();
+  return data.session?.access_token || null;
+}

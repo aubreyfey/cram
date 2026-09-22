@@ -1,7 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { z } from 'zod';
 import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod';
-import { isAdminCode } from './admin.js';
+import { identify } from '../lib/quota.js';
 import { cors } from '../lib/cors.js';
 
 // A study guide for one exam, written from the cards the student already
@@ -55,8 +55,9 @@ export default async function handler(req, res) {
   if (process.env.CRAM_APP_KEY && req.headers['x-cram-key'] !== process.env.CRAM_APP_KEY) {
     return res.status(401).json({ error: 'unauthorized' });
   }
-  const admin = isAdminCode(req.headers['x-cram-admin']);
-  const paid = admin || req.headers['x-cram-tier'] === 'pro';
+  const who = await identify(req);
+  const admin = who.admin;
+  const paid = who.tier === 'pro';
   const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || 'unknown';
   if (!admin && rateLimited(ip)) {
     return res.status(429).json({ error: 'rate_limited' });

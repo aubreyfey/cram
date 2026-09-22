@@ -248,3 +248,24 @@ export async function loadStreakRaw() {
     return { count: 0, last: null };
   }
 }
+
+// A random id made once per install, sent with every API call so the free
+// tier can be counted per phone when nobody is signed in. Not a tracking
+// id: it never leaves the API, and a reinstall makes a new one.
+const DEVICE_KEY = 'cram.device.v1';
+let deviceId = null;
+
+export async function getDeviceId() {
+  if (deviceId) return deviceId;
+  try {
+    deviceId = await AsyncStorage.getItem(DEVICE_KEY);
+    if (!deviceId) {
+      const rnd = () => Math.random().toString(36).slice(2, 10);
+      deviceId = `${rnd()}${rnd()}${rnd()}`.slice(0, 22);
+      await AsyncStorage.setItem(DEVICE_KEY, deviceId);
+    }
+  } catch {
+    deviceId = 'unknown';
+  }
+  return deviceId;
+}

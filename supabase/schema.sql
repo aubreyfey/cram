@@ -136,3 +136,46 @@ create table public.shared_decks (
 );
 
 alter table public.shared_decks enable row level security;
+
+-- Usage and entitlements ---------------------------------------------------
+--
+-- Server-side quota (server/lib/quota.js). One usage row per identity per
+-- day - a signed-in user, a device id, or an IP - bumped after each
+-- request. Entitlements say who is Pro: RevenueCat's webhook will write
+-- here; until then, insert a tester by hand:
+--   insert into public.entitlements (user_id, tier) values ('<auth user id>', 'pro');
+-- Both are service-role only: RLS on, no policies.
+
+create table public.usage (
+  key       text not null,           -- 'user:<uuid>' | 'device:<id>' | 'ip:<addr>'
+  day       date not null,           -- the phone's calendar day
+  cards     integer not null default 0,
+  scans     integer not null default 0,
+  explains  integer not null default 0,
+  primary key (key, day)
+);
+
+create table public.entitlements (
+  user_id     uuid primary key references auth.users (id) on delete cascade,
+  tier        text not null default 'pro' check (tier in ('pro')),
+  until       timestamptz,           -- null = does not expire
+  source      text not null default 'manual',
+  updated_at  timestamptz not null default now()
+);
+
+alter table public.usage        enable row level security;
+alter table public.entitlements enable row level security;
+
+create or replace function public.bump_usage(p_key text, p_day date, p_cards int, p_scans int, p_explains int)
+returns void language sql security definer as $$
+  insert into public.usage (key, day, cards, scans, explains)
+  values (p_key, p_day, p_cards, p_scans, p_explains)
+  on conflict (key, day) do update
+    set cards = public.usage.cards + excluded.cards,
+        scans = public.usage.scans + excluded.scans,
+        explains = public.usage.explains + excluded.explains;
+$$;
+revoke execute on function public.bump_usage from public, anon, authenticated;
+
+-- Old usage rows are worthless after a week. Run now and then, or schedule
+-- it with pg_cron:  select cron.schedule('usage-sweep', '0 4 * * *', $$delete from public.usage where day < current_date - 7$$);
