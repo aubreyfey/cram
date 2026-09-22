@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
-import { FlatList, Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
-import { fileUri, groupByDay } from '../lib/notes';
+import { groupByDay } from '../lib/notes';
+import NoteImage from './NoteImage';
+import PhotoViewer from './PhotoViewer';
 import { colors, radius, space, type } from '../theme';
 
 // The feed: days, newest first, each a kicker line and its entries. An
@@ -18,7 +20,11 @@ import { colors, radius, space, type } from '../theme';
 
 export default function NoteFeed({ notes, onOpen, onLongPress, selecting = false, selected, header, empty, contentContainerStyle }) {
   const days = groupByDay(notes);
+  // Tap a photo: the viewer, not the editor. { images, index } | null.
+  const [viewing, setViewing] = useState(null);
   return (
+    <>
+    <PhotoViewer images={viewing?.images || []} index={viewing?.index || 0} visible={!!viewing} onClose={() => setViewing(null)} />
     <FlatList
       data={days}
       keyExtractor={(g) => g.day}
@@ -37,11 +43,13 @@ export default function NoteFeed({ notes, onOpen, onLongPress, selecting = false
               onLongPress={() => onLongPress?.(n)}
               selecting={selecting}
               selected={selected?.has(n.id)}
+              onPhoto={selecting ? null : (i) => setViewing({ images: n.images, index: i })}
             />
           ))}
         </Animated.View>
       )}
     />
+    </>
   );
 }
 
@@ -58,7 +66,7 @@ export function DayHeader({ day, place }) {
   );
 }
 
-export function NoteEntry({ note, onPress, onLongPress, selecting, selected }) {
+export function NoteEntry({ note, onPress, onLongPress, selecting, selected, onPhoto }) {
   const images = note.images || [];
   return (
     <Pressable onPress={onPress} onLongPress={onLongPress} delayLongPress={350} style={[styles.entry, selecting && selected && styles.entrySelected]}>
@@ -68,7 +76,7 @@ export function NoteEntry({ note, onPress, onLongPress, selecting, selected }) {
           <View style={[styles.check, selected && styles.checkOn]}>{selected ? <Text style={styles.checkMark}>✓</Text> : null}</View>
         ) : null}
       </View>
-      {images.length ? <Photos images={images} /> : null}
+      {images.length ? <Photos images={images} onPress={onPhoto} onLongPress={onLongPress} /> : null}
       {note.title ? <Text style={styles.title}>{note.title}</Text> : null}
       {note.text ? (
         <Text style={styles.text} numberOfLines={images.length ? 6 : 12}>
@@ -87,18 +95,27 @@ export function NoteEntry({ note, onPress, onLongPress, selecting, selected }) {
 
 // One photo: full width at its own shape (capped tall). Two: side by side.
 // Three: a row. Four or more: a 2x2 with "+N" on the last.
-export function Photos({ images, gap = space(1.5), radiusSize = radius.md }) {
+// onPress(index) makes each photo a tap target; a long-press falls through
+// to the entry (selection). Without it the photos are plain.
+export function Photos({ images, gap = space(1.5), radiusSize = radius.md, onPress, onLongPress }) {
   const n = images.length;
+  const tap = { onPress, onLongPress };
   if (n === 1) {
     const img = images[0];
     const ratio = img.width && img.height ? Math.max(img.width / img.height, 0.8) : 4 / 3;
-    return <NoteImage image={img} style={[styles.single, { aspectRatio: ratio, borderRadius: radiusSize }]} />;
+    return (
+      <Tap {...tap} i={0} style={[styles.single, { aspectRatio: ratio, borderRadius: radiusSize }]}>
+        <NoteImage image={img} style={styles.fill} />
+      </Tap>
+    );
   }
   if (n === 2 || n === 3) {
     return (
       <View style={[styles.row, { gap }]}>
         {images.map((img, i) => (
-          <NoteImage key={img.file || img.uri || i} image={img} style={[styles.photo, styles.square, { borderRadius: radiusSize }]} />
+          <Tap {...tap} key={img.file || img.uri || i} i={i} style={[styles.photo, styles.square, { borderRadius: radiusSize }]}>
+            <NoteImage image={img} style={styles.fill} />
+          </Tap>
         ))}
       </View>
     );
@@ -111,14 +128,14 @@ export function Photos({ images, gap = space(1.5), radiusSize = radius.md }) {
           {pair.map((img, i) => {
             const last = r === 1 && i === 1 && n > 4;
             return (
-              <View key={img.file || img.uri || i} style={styles.photo}>
-                <NoteImage image={img} style={[styles.square, { borderRadius: radiusSize }]} />
+              <Tap {...tap} key={img.file || img.uri || i} i={r * 2 + i} style={[styles.photo, styles.square, { borderRadius: radiusSize }]}>
+                <NoteImage image={img} style={styles.fill} />
                 {last ? (
                   <View style={[styles.more, { borderRadius: radiusSize }]}>
                     <Text style={styles.moreText}>+{n - 4}</Text>
                   </View>
                 ) : null}
-              </View>
+              </Tap>
             );
           })}
         </View>
@@ -127,12 +144,15 @@ export function Photos({ images, gap = space(1.5), radiusSize = radius.md }) {
   );
 }
 
-// A stored image, or nothing if it is not on this phone.
-export function NoteImage({ image, style, resizeMode = 'cover' }) {
-  const [broken, setBroken] = useState(false);
-  const uri = fileUri(image);
-  if (!uri || broken) return <View style={[style, styles.missing]} />;
-  return <Image source={{ uri }} resizeMode={resizeMode} onError={() => setBroken(true)} style={style} />;
+// A photo that can be tapped (the viewer) and long-pressed (selection), or
+// just a photo. Module-level so React keeps the image mounted across renders.
+function Tap({ onPress, onLongPress, i, style, children }) {
+  if (!onPress) return <View style={style}>{children}</View>;
+  return (
+    <Pressable onPress={() => onPress(i)} onLongPress={onLongPress} delayLongPress={350} style={style}>
+      {children}
+    </Pressable>
+  );
 }
 
 const MONTHS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
@@ -174,6 +194,7 @@ const styles = StyleSheet.create({
   photo: { flex: 1, backgroundColor: colors.surface, overflow: 'hidden' },
   single: { width: '100%', backgroundColor: colors.surface, overflow: 'hidden' },
   square: { width: '100%', aspectRatio: 1 },
+  fill: { width: '100%', height: '100%' },
   missing: { backgroundColor: colors.surface },
   more: { ...StyleSheet.absoluteFillObject, backgroundColor: '#000000AA', alignItems: 'center', justifyContent: 'center' },
   moreText: { ...type.title, fontSize: 22, color: colors.text },

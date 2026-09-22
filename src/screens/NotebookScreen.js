@@ -4,7 +4,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import Mascot from '../components/Mascot';
 import PrimaryButton from '../components/PrimaryButton';
-import NoteFeed, { NoteImage } from '../components/NoteFeed';
+import NoteFeed from '../components/NoteFeed';
+import NoteImage from '../components/NoteImage';
 import { colors, radius, space, type } from '../theme';
 
 // One notebook, open. The cover across the top, then its notes by day.

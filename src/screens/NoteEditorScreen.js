@@ -22,7 +22,9 @@ import {
   useAudioRecorder,
 } from 'expo-audio';
 import PrimaryButton from '../components/PrimaryButton';
-import { NoteImage, fmt, timeLabel } from '../components/NoteFeed';
+import { fmt, timeLabel } from '../components/NoteFeed';
+import NoteImage from '../components/NoteImage';
+import PhotoViewer from '../components/PhotoViewer';
 import { MAX_IMAGES, deleteFiles, fileUri, importAudio, importImage, isEmptyNote } from '../lib/notes';
 import { useLayout } from '../lib/layout';
 import { alert } from '../lib/alert';
@@ -102,12 +104,9 @@ export default function NoteEditorScreen({ note, notebook, isNew, onSave, onDele
     setPage((p) => Math.max(0, Math.min(p, draft.images.length - 2)));
   };
 
-  const addPhoto = () =>
-    alert('Add a photo', null, [
-      { text: 'Take a photo', onPress: fromCamera },
-      { text: 'From your photos', onPress: fromLibrary },
-      { text: 'Cancel', style: 'cancel' },
-    ]);
+  // Two buttons, not a menu: the camera exists on a phone, not in a browser.
+  const canShoot = Platform.OS !== 'web';
+  const [viewing, setViewing] = useState(null);
 
   // --- audio ---------------------------------------------------------------
   const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
@@ -199,6 +198,7 @@ export default function NoteEditorScreen({ note, notebook, isNew, onSave, onDele
 
   return (
     <KeyboardAvoidingView style={styles.root} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <PhotoViewer images={draft.images || []} index={viewing ?? 0} visible={viewing != null} onClose={() => setViewing(null)} />
       <View style={[styles.header, { paddingTop: insets.top + space(2) }]}>
         <Pressable onPress={() => cancel()} hitSlop={16}>
           <Text style={styles.cancel}>Cancel</Text>
@@ -222,7 +222,9 @@ export default function NoteEditorScreen({ note, notebook, isNew, onSave, onDele
             >
               {draft.images.map((img, i) => (
                 <View key={img.file || img.uri || i} style={{ width: pageW, height: pageW * 0.75 }}>
-                  <NoteImage image={img} style={styles.slide} resizeMode="cover" />
+                  <Pressable onPress={() => setViewing(i)} style={StyleSheet.absoluteFill}>
+                    <NoteImage image={img} style={styles.slide} resizeMode="cover" />
+                  </Pressable>
                   <Pressable onPress={() => removeImage(i)} style={styles.remove} hitSlop={8}>
                     <Text style={styles.removeText}>✕</Text>
                   </Pressable>
@@ -235,16 +237,33 @@ export default function NoteEditorScreen({ note, notebook, isNew, onSave, onDele
                   ? draft.images.map((_, i) => <View key={i} style={[styles.dot, i === page && styles.dotOn]} />)
                   : null}
               </View>
-              <Pressable onPress={addPhoto} hitSlop={8} disabled={busy}>
-                <Text style={styles.addMore}>{busy ? 'Adding…' : '+ Photo'}</Text>
-              </Pressable>
+              <View style={styles.addRow}>
+                {canShoot ? (
+                  <Pressable onPress={fromCamera} hitSlop={8} disabled={busy}>
+                    <Text style={styles.addMore}>Take</Text>
+                  </Pressable>
+                ) : null}
+                <Pressable onPress={fromLibrary} hitSlop={8} disabled={busy}>
+                  <Text style={styles.addMore}>{busy ? 'Adding…' : '+ Photo'}</Text>
+                </Pressable>
+              </View>
             </View>
           </View>
         ) : (
-          <Pressable onPress={addPhoto} style={[styles.dropzone, { height: pageW * 0.42 }]} disabled={busy}>
+          <View style={[styles.dropzone, { height: pageW * 0.42 }]}>
             <Text style={styles.dropGlyph}>▣</Text>
-            <Text style={styles.dropText}>{busy ? 'Adding…' : 'Photo of the board, a diagram, a page'}</Text>
-          </Pressable>
+            <Text style={styles.dropText}>{busy ? 'Adding…' : 'A photo of the board, a diagram, a page'}</Text>
+            <View style={styles.dropButtons}>
+              {canShoot ? (
+                <Pressable onPress={fromCamera} style={styles.dropButton} disabled={busy}>
+                  <Text style={styles.dropButtonText}>Take a photo</Text>
+                </Pressable>
+              ) : null}
+              <Pressable onPress={fromLibrary} style={[styles.dropButton, styles.dropButtonOn]} disabled={busy}>
+                <Text style={[styles.dropButtonText, { color: colors.accentInk }]}>{canShoot ? 'From photos' : 'Choose a photo'}</Text>
+              </Pressable>
+            </View>
+          </View>
         )}
 
         <View style={styles.body}>
@@ -400,6 +419,11 @@ const styles = StyleSheet.create({
   dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.line },
   dotOn: { backgroundColor: colors.accent },
   addMore: { ...type.label, fontSize: 12, color: colors.accent },
+  addRow: { flexDirection: 'row', gap: space(5) },
+  dropButtons: { flexDirection: 'row', gap: space(2), marginTop: space(2) },
+  dropButton: { paddingHorizontal: space(4), paddingVertical: space(2), borderRadius: radius.pill, borderWidth: 1, borderColor: colors.line },
+  dropButtonOn: { backgroundColor: colors.accent, borderColor: colors.accent },
+  dropButtonText: { ...type.label, fontSize: 12, color: colors.text },
   dropzone: {
     marginHorizontal: space(6),
     borderRadius: radius.lg,
