@@ -16,6 +16,7 @@ import { deckProgress, dueCount } from '../lib/srs';
 import { upcoming } from '../lib/exams';
 import { shareDeck } from '../lib/share';
 import { dismissBackupNudge, onStatus, shouldNudgeBackup } from '../lib/cloud';
+import { useLayout } from '../lib/layout';
 import { colors, motion, radius, space, type } from '../theme';
 import { alert } from '../lib/alert';
 
@@ -40,6 +41,9 @@ export default function LibraryScreen({
   onLoadSample,
 }) {
   const insets = useSafeAreaInsets();
+  // Two columns of decks on an iPad. numColumns cannot change on a mounted
+  // list, so the key remounts it on rotation.
+  const { columns } = useLayout();
   // "Back this up?" - once, for guests with a few decks. Re-checked when
   // the deck count or sign-in state changes, so it leaves the moment
   // they sign in.
@@ -108,6 +112,9 @@ export default function LibraryScreen({
       </View>
 
       <FlatList
+        key={columns}
+        numColumns={columns}
+        columnWrapperStyle={columns > 1 ? styles.gridRow : undefined}
         data={decks}
         keyExtractor={(d) => d.id}
         contentContainerStyle={{ paddingBottom: insets.bottom + space(10) }}
@@ -224,9 +231,9 @@ export default function LibraryScreen({
           const pct = Math.round(deckProgress(item.cards) * 100);
           const due = dueCount(item.cards);
           return (
-            <Animated.View entering={FadeInDown.delay(index * 45).duration(320)}>
+            <Animated.View entering={FadeInDown.delay(index * 45).duration(320)} style={columns > 1 && styles.gridCell}>
               <Pressable
-                style={styles.card}
+                style={[styles.card, columns > 1 && styles.gridCard]}
                 onPress={() => onOpen(item)}
                 onLongPress={() => deckActions(item)}
               >
@@ -354,6 +361,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.line,
   },
+  gridRow: { paddingHorizontal: space(6), gap: space(3) },
+  gridCell: { flex: 1 },
+  gridCard: { marginHorizontal: 0, flex: 1 },
   cardTop: { flexDirection: 'row', justifyContent: 'space-between', gap: space(4) },
   cardTitle: { ...type.body, fontSize: 18, fontWeight: '700', color: colors.text, flex: 1 },
   cardPct: { ...type.mono, color: colors.accent },

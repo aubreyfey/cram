@@ -15,7 +15,8 @@
       "imageWidth": 200
     },
     "ios": {
-      "supportsTablet": false,
+      "supportsTablet": true,
+      "requireFullScreen": true,
       "bundleIdentifier": "com.cram.app",
       "buildNumber": "1",
       "infoPlist": {

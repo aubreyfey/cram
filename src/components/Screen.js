@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleSheet } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import Animated, {
   FadeIn,
   FadeOut,
@@ -9,6 +9,7 @@ import Animated, {
   SlideOutRight,
 } from 'react-native-reanimated';
 import { colors } from '../theme';
+import { READABLE, useLayout } from '../lib/layout';
 
 // Three transition roles, matching how iOS itself distinguishes them:
 //   fade  - swapping the root view (camera <-> generating)
@@ -30,8 +31,16 @@ const PRESETS = {
   },
 };
 
-export default function Screen({ preset = 'fade', children, style }) {
+// maxWidth: on an iPad or a desktop browser, content screens sit in a
+// centred column of this width instead of stretching a phone layout across
+// the whole pane. Push and modal screens get a readable column by default;
+// fade screens (camera, generating) are full-bleed. Pass null to opt out,
+// or a number to widen (the Library).
+export default function Screen({ preset = 'fade', maxWidth, children, style }) {
   const { entering, exiting } = PRESETS[preset] ?? PRESETS.fade;
+  const { width } = useLayout();
+  const cap = maxWidth === undefined ? (preset === 'fade' ? null : READABLE) : maxWidth;
+  const column = cap && width > cap;
 
   return (
     <Animated.View
@@ -39,7 +48,7 @@ export default function Screen({ preset = 'fade', children, style }) {
       entering={entering}
       exiting={exiting}
     >
-      {children}
+      {column ? <View style={[styles.column, { width: cap }]}>{children}</View> : children}
     </Animated.View>
   );
 }
@@ -47,4 +56,5 @@ export default function Screen({ preset = 'fade', children, style }) {
 const styles = StyleSheet.create({
   // Opaque so the outgoing screen never bleeds through mid-transition.
   base: { backgroundColor: colors.bg },
+  column: { flex: 1, alignSelf: 'center' },
 });

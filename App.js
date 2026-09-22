@@ -54,6 +54,7 @@ import { configureNotifications, rearmNag } from './src/lib/reminders';
 import { dropSource, keepSource } from './src/lib/sources';
 import { deleteFigures } from './src/lib/figures';
 import { clearShareUrl, deckFromShared, fetchSharedDeck, parseShareUrl } from './src/lib/shareLink';
+import { LIBRARY } from './src/lib/layout';
 import { deleteTalk, loadTalks, saveTalk } from './src/lib/talks';
 import { migrate } from './src/lib/migrations';
 import { onMerged, startCloud, sync as syncCloud } from './src/lib/cloud';
@@ -761,7 +762,7 @@ function App() {
             )}
 
             {screen === 'library' && (
-              <Screen preset="push">
+              <Screen preset="push" maxWidth={LIBRARY}>
                 <LibraryScreen
                   decks={decks}
                   streak={streak}

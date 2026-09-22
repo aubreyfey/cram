@@ -59,6 +59,7 @@ src/lib/
   figures.js               crops the diagram a card is about out of the photo
   storage.js               decks, free-tier meter, streak (AsyncStorage)
   cloud.js                 cloud backup: pull, merge, push, per account
+  layout.js                phone or wide? Screen centres a column, Library goes to two
   account.js               sign-in: email + one-time code (Supabase)
   srs.js                   trimmed SM-2 scheduling
   share.js                 deck -> plain text for the share sheet
@@ -256,6 +257,12 @@ just "more of the same". The check lives in `canUseDocuments()` in
   Most pages produce none, which is right. Files live in the app's documents
   folder and go with the deck when it is deleted; the cloud backup carries
   the card, not the picture.
+- **iPad and wide screens.** `supportsTablet` is on (portrait, full screen).
+  Content screens sit in a centred 640px column instead of a phone layout
+  stretched across the pane - `Screen` does it, per preset, so a new screen
+  gets it for free; the Library gets 980px and two columns of decks; the
+  camera stays full-bleed. The same rules make the web build look right in
+  a desktop browser.
 - **Share a deck by link.** Share → "As a link". The API stores a cards-only
   copy (no schedule, no pictures) under a random id in Supabase - via the
   service role, so the anon key in the app can never write or list them -

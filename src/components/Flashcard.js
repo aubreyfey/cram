@@ -14,7 +14,9 @@ import Figure from './Figure';
 import { colors, motion, radius, shadow, space, type } from '../theme';
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
-const SWIPE_THRESHOLD = SCREEN_W * 0.28;
+// Capped: on an iPad the card is a centred 600px column, not the screen, and
+// a third of a 12" screen is too far to drag for a rating.
+const SWIPE_THRESHOLD = Math.min(SCREEN_W * 0.28, 150);
 const EXIT_MS = 220;
 
 const Flashcard = forwardRef(function Flashcard({ card, onRate, onExplain, depth = 0 }, ref) {
