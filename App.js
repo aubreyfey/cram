@@ -30,6 +30,7 @@ import TalkScreen from './src/screens/TalkScreen';
 import TalksScreen from './src/screens/TalksScreen';
 import VideoScreen from './src/screens/VideoScreen';
 import SharedDeckScreen from './src/screens/SharedDeckScreen';
+import JournalScreen from './src/screens/JournalScreen';
 
 import { MAX_PAGES, generateDeck, generateGuide } from './src/lib/api';
 import { pickDocument, pickFromLibrary } from './src/lib/pickers';
@@ -53,6 +54,7 @@ import { mergeDecks, readDeckFile } from './src/lib/backup';
 import { configureNotifications, rearmNag } from './src/lib/reminders';
 import { dropSource, keepSource } from './src/lib/sources';
 import { deleteFigures } from './src/lib/figures';
+import { logJournal } from './src/lib/journal';
 import { clearShareUrl, deckFromShared, fetchSharedDeck, parseShareUrl } from './src/lib/shareLink';
 import { LIBRARY } from './src/lib/layout';
 import { deleteTalk, loadTalks, saveTalk } from './src/lib/talks';
@@ -223,6 +225,7 @@ function App() {
         // Recorded for everyone, not just free users - subscribers don't meter
         // cards, but their scans still cost us money and feed the fair-use check.
         await addUsage(fresh.cards.length);
+        logJournal({ scans: 1, cards: fresh.cards.length });
         setQuota(await checkQuota());
 
         setAppendTo(null);
@@ -381,8 +384,11 @@ function App() {
     start({ kind: 'images', pages, name: pages[0].name || null });
   }, [pages, start]);
 
-  const updateDeck = useCallback(async (deck, { rated } = {}) => {
-    if (rated) setStreak((await touchStreak()).count);
+  const updateDeck = useCallback(async (deck, { rated, rating } = {}) => {
+    if (rated) {
+      setStreak((await touchStreak()).count);
+      logJournal({ rated: 1, ...(rating ? { [rating]: 1 } : {}) });
+    }
     const prev = activeRef.current;
     setActiveDeck(deck);
 
@@ -591,6 +597,7 @@ function App() {
                   context={talkContext}
                   onSave={async (talk) => {
                     setTalks(await saveTalk(talk));
+                    logJournal({ talks: 1, talkSeconds: Math.round(talk.duration || 0) });
                     setScreen(talkContext?.back ?? 'talks');
                   }}
                   onMakeCards={cardsFromTalk}
@@ -611,6 +618,12 @@ function App() {
                     setScreen('camera');
                   }}
                 />
+              </Screen>
+            )}
+
+            {screen === 'journal' && (
+              <Screen preset="push">
+                <JournalScreen streak={streak} onClose={() => setScreen('library')} />
               </Screen>
             )}
 
@@ -789,6 +802,7 @@ function App() {
                   onAddPages={appendToDeck}
                   onCreate={() => setScreen('create')}
                   onSettings={() => setScreen('settings')}
+                  onJournal={() => setScreen('journal')}
                   exams={exams}
                   onAddExam={() => {
                     setEditingExam(null);

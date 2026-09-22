@@ -13,6 +13,7 @@ import {
 } from './storage';
 import { loadTalks, writeMergedTalks } from './talks';
 import { getProfile, writeMergedName } from './profile';
+import { loadJournal, mergeJournal, writeMergedJournal } from './journal';
 
 // Cloud backup. Signed in, everything that matters lives in one row per
 // person (supabase/schema.sql → backups): decks with their schedule, exams,
@@ -33,6 +34,8 @@ import { getProfile, writeMergedName } from './profile';
 //           transcript travels (that is the part cards are made from)
 //   streak  the later date wins
 //   name    this phone's, unless it has none
+//   journal per day, the larger number per field - a synced rating must
+//           not count twice
 //   deleted union - a deck deleted anywhere stays deleted everywhere
 //
 //   sync()          -> { changed } - did the merge alter local data
@@ -154,6 +157,7 @@ async function run() {
     if (changed) {
       await writeMerged({ decks: merged.decks, exams: merged.exams, streak: merged.streak, deleted: merged.deleted });
       await writeMergedTalks(merged.talks);
+      await writeMergedJournal(merged.journal);
       if (merged.profile.name !== local.profile.name) await writeMergedName(merged.profile.name);
     }
   }
@@ -178,15 +182,16 @@ async function run() {
 }
 
 async function snapshot() {
-  const [decks, exams, talks, streak, deleted, profile] = await Promise.all([
+  const [decks, exams, talks, streak, deleted, profile, journal] = await Promise.all([
     loadDecks(),
     loadExams(),
     loadTalks(),
     loadStreakRaw(),
     loadDeleted(),
     getProfile(),
+    loadJournal(),
   ]);
-  return { cram: FORMAT, decks, exams, talks, streak, deleted, profile: { name: profile.name || '' } };
+  return { cram: FORMAT, decks, exams, talks, streak, deleted, profile: { name: profile.name || '' }, journal };
 }
 
 // Exported for the tests; nothing else calls it directly.
@@ -209,8 +214,9 @@ export function merge(local, remote) {
   const streak = !l.last || (r.last && r.last > l.last) ? r : l.last === r.last ? { ...l, count: Math.max(l.count, r.count || 0) } : l;
 
   const name = local.profile.name || remote.profile?.name || '';
+  const journal = mergeJournal(local.journal, remote.journal);
 
-  return { cram: FORMAT, decks, exams, talks, streak, deleted, profile: { name } };
+  return { cram: FORMAT, decks, exams, talks, streak, deleted, profile: { name }, journal };
 }
 
 // This phone's copy wins; the other phone only fills in what is missing.
@@ -227,6 +233,7 @@ function differs(a, b) {
     JSON.stringify(a.talks) !== JSON.stringify(b.talks) ||
     JSON.stringify(a.streak) !== JSON.stringify(b.streak) ||
     a.profile.name !== b.profile.name ||
+    JSON.stringify(a.journal || {}) !== JSON.stringify(b.journal || {}) ||
     Object.keys(a.deleted).length !== Object.keys(b.deleted).length
   );
 }

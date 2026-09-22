@@ -130,7 +130,7 @@ export default function StudyScreen({
     const updated = schedule(card, rating);
     onUpdateDeck(
       { ...deck, cards: deck.cards.map((c) => (c.id === updated.id ? updated : c)) },
-      { rated: true },
+      { rated: true, rating },
     );
 
     setRatings((r) => ({ ...r, [rating]: (r[rating] || 0) + 1 }));

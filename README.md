@@ -72,6 +72,7 @@ src/lib/
   figures.js               crops the diagram a card is about out of the photo
   storage.js               decks, free-tier meter, streak (AsyncStorage)
   cloud.js                 cloud backup: pull, merge, push, per account
+  journal.js               one entry per day: scans, cards rated, got-it, talks
   layout.js                phone or wide? Screen centres a column, Library goes to two
   account.js               sign-in: email + one-time code (Supabase)
   srs.js                   trimmed SM-2 scheduling
@@ -273,6 +274,12 @@ just "more of the same". The check lives in `canUseDocuments()` in
   Most pages produce none, which is right. Files live in the app's documents
   folder and go with the deck when it is deleted; the cloud backup carries
   the card, not the picture.
+- **Journal.** Tap the streak in the Library (or the Journal row before
+  there is one). The streak, this week - days, cards rated, % got it, scans,
+  minutes talking - then every day that had something in it. Numbers only,
+  added to as the day goes; the streak counts days, this says what was in
+  them. Backed up with everything else; two phones on one day take the
+  larger number per field so a synced rating never counts twice.
 - **Search.** A field above the decks once there are six or more. Matches
   titles, subjects and the cards themselves, so "krebs" finds the deck even
   when it is called "Lecture 12". While searching, the week and the nudges

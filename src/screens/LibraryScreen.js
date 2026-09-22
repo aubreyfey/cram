@@ -45,6 +45,7 @@ export default function LibraryScreen({
   onOpenTalks,
   onCreate,
   onSettings,
+  onJournal,
   onClose,
   onDelete,
   onLoadSample,
@@ -105,9 +106,11 @@ export default function LibraryScreen({
         <View style={{ flex: 1 }}>
           <Text style={styles.title}>Your decks</Text>
           {streak > 1 ? (
-            <Animated.Text entering={ZoomIn.springify().damping(12).delay(200)} style={styles.streakLine}>
-              {streak}-DAY STREAK
-            </Animated.Text>
+            <Pressable onPress={onJournal} hitSlop={8} disabled={!onJournal}>
+              <Animated.Text entering={ZoomIn.springify().damping(12).delay(200)} style={styles.streakLine}>
+                {streak}-DAY STREAK{onJournal ? '  ›' : ''}
+              </Animated.Text>
+            </Pressable>
           ) : null}
         </View>
         <View style={styles.headerActions}>
@@ -220,6 +223,15 @@ export default function LibraryScreen({
               </View>
             </Animated.View>
           ) : null}
+            {onJournal && streak <= 1 && decks.length ? (
+              <Pressable onPress={onJournal} style={styles.talksRow}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.talksTitle}>Journal</Text>
+                  <Text style={styles.talksSub}>What each day held - scans, cards, how many you got</Text>
+                </View>
+                <Text style={styles.chevron}>›</Text>
+              </Pressable>
+            ) : null}
             {onOpenTalks && talkCount ? (
               <Pressable onPress={onOpenTalks} style={styles.talksRow}>
                 <View style={{ flex: 1 }}>
