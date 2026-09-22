@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, {
   FadeInDown,
@@ -19,6 +19,15 @@ import { dismissBackupNudge, onStatus, shouldNudgeBackup } from '../lib/cloud';
 import { useLayout } from '../lib/layout';
 import { colors, motion, radius, space, type } from '../theme';
 import { alert } from '../lib/alert';
+
+const SEARCH_AFTER = 6;
+
+function deckMatches(deck, query) {
+  const q = query.trim().toLowerCase();
+  if (!q) return true;
+  const hit = (s) => typeof s === 'string' && s.toLowerCase().includes(q);
+  return hit(deck.title) || hit(deck.subject) || deck.cards.some((c) => hit(c.front) || hit(c.back));
+}
 
 export default function LibraryScreen({
   decks,
@@ -44,6 +53,13 @@ export default function LibraryScreen({
   // Two columns of decks on an iPad. numColumns cannot change on a mounted
   // list, so the key remounts it on rotation.
   const { columns } = useLayout();
+  // Search, once there are enough decks that scrolling is a chore. Matches
+  // the title, the subject, and the cards themselves - "krebs" finds the
+  // deck even if it is called "Lecture 12". While searching, the week and
+  // the nudges step aside; only the matching decks stay.
+  const [query, setQuery] = useState('');
+  const searching = query.trim().length > 0;
+  const shown = searching ? decks.filter((d) => deckMatches(d, query)) : decks;
   // "Back this up?" - once, for guests with a few decks. Re-checked when
   // the deck count or sign-in state changes, so it leaves the moment
   // they sign in.
@@ -115,11 +131,27 @@ export default function LibraryScreen({
         key={columns}
         numColumns={columns}
         columnWrapperStyle={columns > 1 ? styles.gridRow : undefined}
-        data={decks}
+        data={shown}
         keyExtractor={(d) => d.id}
+        keyboardShouldPersistTaps="handled"
         contentContainerStyle={{ paddingBottom: insets.bottom + space(10) }}
         ListHeaderComponent={
           <View>
+          {decks.length >= SEARCH_AFTER ? (
+            <TextInput
+              style={styles.search}
+              value={query}
+              onChangeText={setQuery}
+              placeholder="Search decks and cards"
+              placeholderTextColor={colors.textFaint}
+              autoCapitalize="none"
+              autoCorrect={false}
+              returnKeyType="search"
+              clearButtonMode="while-editing"
+            />
+          ) : null}
+          {!searching ? (
+          <>
           {/* Exams first: this is the part of the app that knows what the
               week looks like. Empty state is a single quiet line - most people
               add their first exam after their first deck, not before. */}
@@ -199,33 +231,45 @@ export default function LibraryScreen({
                 <Text style={styles.chevron}>›</Text>
               </Pressable>
             ) : null}
-            {decks.length ? <Text style={styles.sectionTitle}>YOUR DECKS</Text> : null}
+          </>
+          ) : null}
+            {shown.length ? (
+              <Text style={styles.sectionTitle}>
+                {searching ? `${shown.length} ${shown.length === 1 ? 'DECK' : 'DECKS'} MATCH` : 'YOUR DECKS'}
+              </Text>
+            ) : null}
           </View>
         }
         ListEmptyComponent={
-          <View style={styles.empty}>
-            <Mascot mood="idle" size={80} style={{ marginBottom: space(5) }} />
-            <Text style={styles.emptyTitle}>Nothing here yet</Text>
-            <Text style={styles.emptyBody}>
-              Point the camera at a slide or a page of notes - or write the cards yourself.
-            </Text>
-            {onCreate ? (
-              <PrimaryButton
-                label="Write your own"
-                variant="solid"
-                onPress={onCreate}
-                style={{ marginTop: space(8), alignSelf: 'stretch' }}
-              />
-            ) : null}
-            {onLoadSample ? (
-              <PrimaryButton
-                label="Load two sample decks"
-                variant="ghost"
-                onPress={onLoadSample}
-                style={{ marginTop: space(3), alignSelf: 'stretch' }}
-              />
-            ) : null}
-          </View>
+          searching ? (
+            <View style={styles.empty}>
+              <Text style={styles.emptyBody}>Nothing matches “{query.trim()}”.</Text>
+            </View>
+          ) : (
+            <View style={styles.empty}>
+              <Mascot mood="idle" size={80} style={{ marginBottom: space(5) }} />
+              <Text style={styles.emptyTitle}>Nothing here yet</Text>
+              <Text style={styles.emptyBody}>
+                Point the camera at a slide or a page of notes - or write the cards yourself.
+              </Text>
+              {onCreate ? (
+                <PrimaryButton
+                  label="Write your own"
+                  variant="solid"
+                  onPress={onCreate}
+                  style={{ marginTop: space(8), alignSelf: 'stretch' }}
+                />
+              ) : null}
+              {onLoadSample ? (
+                <PrimaryButton
+                  label="Load two sample decks"
+                  variant="ghost"
+                  onPress={onLoadSample}
+                  style={{ marginTop: space(3), alignSelf: 'stretch' }}
+                />
+              ) : null}
+            </View>
+          )
         }
         renderItem={({ item, index }) => {
           const pct = Math.round(deckProgress(item.cards) * 100);
@@ -283,6 +327,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: space(6),
   },
   title: { ...type.title, fontSize: 26, color: colors.text },
+  search: {
+    ...type.body,
+    color: colors.text,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.line,
+    borderRadius: radius.md,
+    paddingHorizontal: space(4),
+    paddingVertical: space(3),
+    marginHorizontal: space(6),
+    marginTop: space(4),
+  },
   streakLine: { ...type.mono, fontSize: 10, color: colors.accent, marginTop: 2 },
   sectionTitle: {
     ...type.mono,

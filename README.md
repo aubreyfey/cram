@@ -273,6 +273,10 @@ just "more of the same". The check lives in `canUseDocuments()` in
   Most pages produce none, which is right. Files live in the app's documents
   folder and go with the deck when it is deleted; the cloud backup carries
   the card, not the picture.
+- **Search.** A field above the decks once there are six or more. Matches
+  titles, subjects and the cards themselves, so "krebs" finds the deck even
+  when it is called "Lecture 12". While searching, the week and the nudges
+  step aside.
 - **iPad and wide screens.** `supportsTablet` is on (portrait, full screen).
   Content screens sit in a centred 640px column instead of a phone layout
   stretched across the pane - `Screen` does it, per preset, so a new screen
