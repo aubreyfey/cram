@@ -287,11 +287,15 @@ just "more of the same". The check lives in `canUseDocuments()` in
   shelf shows notebooks as books (cover, name, count; long-press to rename,
   change cover, archive, delete; "+" to add). The **Timeline** tab is every
   note from every notebook by day - `SEP 18 · GRAND YOHO`, then each entry
-  with its time, photos (one wide, two or three across, a 2x2 with "+N"),
-  and the words under them. Search spans titles, text, places and notebook
-  names. The editor: photos first (swipe between them, take or pick more),
-  title and text under, then when (native picker), where (a place, typed)
-  and "say it" (record; play back; remove). **Make cards from this** turns
+  with its time in a narrow gutter and, beside it, the photos as a row at a
+  fixed height (scrolling sideways past four or five) with the words under
+  them. Search spans titles, text, places and notebook names. The editor is
+  capture-first: the notebook name in the header (tap to move the note) over
+  `5:17pm · grand yoho` (tap to open when/where, folded away until then);
+  the photo full-bleed with a `4 / 4` counter and remove/add buttons on the
+  image; the words under it; and a bar pinned to the bottom - record on the
+  left over a "no audio yet" line, a shutter in the middle that goes
+  straight to the camera, ✓ on the right to keep it. **Make cards from this** turns
   the words into cards like pasted notes, or the photos into cards like a
   scan - same quota, same study screen. Long-press an entry, pick a few,
   **Make a strip**: one tall image with the notebook name, the date, every

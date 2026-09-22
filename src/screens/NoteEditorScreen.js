@@ -43,7 +43,7 @@ const DatePicker = Platform.OS === 'web' ? null : require('@react-native-communi
 //   onMakeCards(note)  study-first: the words or the photos, into cards
 const MAX_RECORD = 10 * 60;
 
-export default function NoteEditorScreen({ note, notebook, isNew, onSave, onDelete, onClose, onMakeCards }) {
+export default function NoteEditorScreen({ note, notebook, notebooks = [], isNew, onSave, onDelete, onClose, onMakeCards, onSwitchNotebook }) {
   const insets = useSafeAreaInsets();
   const { width } = useLayout();
   const [draft, setDraft] = useState(note);
@@ -107,6 +107,19 @@ export default function NoteEditorScreen({ note, notebook, isNew, onSave, onDele
   // Two buttons, not a menu: the camera exists on a phone, not in a browser.
   const canShoot = Platform.OS !== 'web';
   const [viewing, setViewing] = useState(null);
+  // When and where stay folded away until the line under the title is
+  // tapped - most notes are right now, right here.
+  const [meta, setMeta] = useState(false);
+
+  const canSwitch = !!onSwitchNotebook && notebooks.filter((b) => !b.archived).length > 1;
+  const pickNotebook = () => {
+    if (!canSwitch) return;
+    const others = notebooks.filter((b) => !b.archived && b.id !== draft.notebookId).slice(0, 8);
+    alert('Move to', null, [
+      ...others.map((b) => ({ text: b.title, onPress: () => { patch({ notebookId: b.id }); onSwitchNotebook(b); } })),
+      { text: 'Cancel', style: 'cancel' },
+    ]);
+  };
 
   // --- audio ---------------------------------------------------------------
   const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
@@ -199,21 +212,56 @@ export default function NoteEditorScreen({ note, notebook, isNew, onSave, onDele
   return (
     <KeyboardAvoidingView style={styles.root} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <PhotoViewer images={draft.images || []} index={viewing ?? 0} visible={viewing != null} onClose={() => setViewing(null)} />
+
+      {/* Where the note lives and when it happened, both editable here:
+          the notebook by name, the rest by tapping the line under it. */}
       <View style={[styles.header, { paddingTop: insets.top + space(2) }]}>
-        <Pressable onPress={() => cancel()} hitSlop={16}>
-          <Text style={styles.cancel}>Cancel</Text>
+        <Pressable onPress={() => cancel()} style={styles.round} hitSlop={10}>
+          <Text style={styles.roundGlyph}>←</Text>
         </Pressable>
-        <Text style={styles.kicker} numberOfLines={1}>
-          {(notebook?.title || 'NOTE').toUpperCase()}
-        </Text>
-        <Pressable onPress={save} hitSlop={16} disabled={busy}>
-          <Text style={[styles.save, (empty || busy) && { color: colors.textFaint }]}>{isNew ? 'Add' : 'Save'}</Text>
-        </Pressable>
+        <View style={styles.headMid}>
+          <Pressable onPress={pickNotebook} hitSlop={8}>
+            <Text style={styles.headTitle} numberOfLines={1}>
+              {notebook?.title || 'Note'}
+              {canSwitch ? ' ⌄' : ''}
+            </Text>
+          </Pressable>
+          <Pressable onPress={() => setMeta((m) => !m)} hitSlop={8}>
+            <Text style={styles.headMeta} numberOfLines={1}>
+              {timeLabel(draft.at).toLowerCase()} · {draft.place || 'add a place'}
+            </Text>
+          </Pressable>
+        </View>
+        {!isNew ? (
+          <Pressable onPress={confirmDelete} style={styles.round} hitSlop={10}>
+            <Text style={[styles.roundGlyph, { color: colors.again }]}>✕</Text>
+          </Pressable>
+        ) : (
+          <View style={styles.round} />
+        )}
       </View>
 
-      <ScrollView contentContainerStyle={{ paddingBottom: insets.bottom + space(16) }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={{ paddingBottom: insets.bottom + space(32) }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+        {meta ? (
+          <Animated.View entering={FadeIn.duration(180)} style={styles.metaBox}>
+            <Row label="WHEN">
+              <When at={draft.at} onChange={(at) => patch({ at })} />
+            </Row>
+            <Row label="WHERE">
+              <TextInput
+                style={styles.rowInput}
+                value={draft.place}
+                onChangeText={(t) => patch({ place: t })}
+                placeholder="A library, a café, room 204"
+                placeholderTextColor={colors.textFaint}
+                maxLength={80}
+              />
+            </Row>
+          </Animated.View>
+        ) : null}
+
         {draft.images?.length ? (
-          <View>
+          <View style={styles.stage}>
             <ScrollView
               horizontal
               pagingEnabled
@@ -221,32 +269,23 @@ export default function NoteEditorScreen({ note, notebook, isNew, onSave, onDele
               onMomentumScrollEnd={(e) => setPage(Math.round(e.nativeEvent.contentOffset.x / pageW))}
             >
               {draft.images.map((img, i) => (
-                <View key={img.file || img.uri || i} style={{ width: pageW, height: pageW * 0.75 }}>
-                  <Pressable onPress={() => setViewing(i)} style={StyleSheet.absoluteFill}>
-                    <NoteImage image={img} style={styles.slide} resizeMode="cover" />
-                  </Pressable>
-                  <Pressable onPress={() => removeImage(i)} style={styles.remove} hitSlop={8}>
-                    <Text style={styles.removeText}>✕</Text>
-                  </Pressable>
-                </View>
+                <Pressable key={img.file || img.uri || i} onPress={() => setViewing(i)} style={{ width: pageW, height: pageW * 0.92 }}>
+                  <NoteImage image={img} style={styles.slide} resizeMode="cover" />
+                </Pressable>
               ))}
             </ScrollView>
-            <View style={styles.dotsRow}>
-              <View style={styles.dots}>
-                {draft.images.length > 1
-                  ? draft.images.map((_, i) => <View key={i} style={[styles.dot, i === page && styles.dotOn]} />)
-                  : null}
-              </View>
-              <View style={styles.addRow}>
-                {canShoot ? (
-                  <Pressable onPress={fromCamera} hitSlop={8} disabled={busy}>
-                    <Text style={styles.addMore}>Take</Text>
-                  </Pressable>
-                ) : null}
-                <Pressable onPress={fromLibrary} hitSlop={8} disabled={busy}>
-                  <Text style={styles.addMore}>{busy ? 'Adding…' : '+ Photo'}</Text>
-                </Pressable>
-              </View>
+            <View style={styles.counter} pointerEvents="none">
+              <Text style={styles.counterText}>
+                {page + 1} / {draft.images.length}
+              </Text>
+            </View>
+            <View style={styles.stageActions}>
+              <Pressable onPress={() => removeImage(page)} style={styles.stageButton} hitSlop={8}>
+                <Text style={styles.stageGlyph}>✕</Text>
+              </Pressable>
+              <Pressable onPress={fromLibrary} style={styles.stageButton} hitSlop={8} disabled={busy}>
+                <Text style={styles.stageGlyph}>▤</Text>
+              </Pressable>
             </View>
           </View>
         ) : (
@@ -287,46 +326,6 @@ export default function NoteEditorScreen({ note, notebook, isNew, onSave, onDele
             textAlignVertical="top"
           />
 
-          <View style={styles.rows}>
-            <Row label="WHEN">
-              <When at={draft.at} onChange={(at) => patch({ at })} />
-            </Row>
-            <Row label="WHERE">
-              <TextInput
-                style={styles.rowInput}
-                value={draft.place}
-                onChangeText={(t) => patch({ place: t })}
-                placeholder="Optional - a library, a café, room 204"
-                placeholderTextColor={colors.textFaint}
-                maxLength={80}
-              />
-            </Row>
-            <Row label="SAY IT">
-              {recording ? (
-                <Pressable onPress={stopRecording} style={styles.rec}>
-                  <View style={styles.recDot} />
-                  <Text style={styles.recText}>{fmt(seconds)} · tap to stop</Text>
-                </Pressable>
-              ) : draft.audio ? (
-                <View style={styles.audioRow}>
-                  <Pressable onPress={togglePlay} style={styles.play} hitSlop={8}>
-                    <Text style={styles.playGlyph}>{status.playing ? '❚❚' : '▶'}</Text>
-                  </Pressable>
-                  <Text style={styles.audioText}>{fmt(draft.audio.duration)} recording</Text>
-                  <Pressable onPress={removeAudio} hitSlop={8}>
-                    <Text style={styles.audioRemove}>Remove</Text>
-                  </Pressable>
-                </View>
-              ) : (
-                <Pressable onPress={startRecording} hitSlop={8} disabled={Platform.OS === 'web'}>
-                  <Text style={[styles.rowAction, Platform.OS === 'web' && { color: colors.textFaint }]}>
-                    {Platform.OS === 'web' ? 'Record on your phone' : 'Record yourself explaining it'}
-                  </Text>
-                </Pressable>
-              )}
-            </Row>
-          </View>
-
           {onMakeCards && canMakeCards ? (
             <Animated.View entering={FadeIn.duration(200)}>
               <PrimaryButton label="Make cards from this" variant="solid" onPress={() => onMakeCards(draft)} style={{ marginTop: space(6) }} />
@@ -336,17 +335,49 @@ export default function NoteEditorScreen({ note, notebook, isNew, onSave, onDele
               </Text>
             </Animated.View>
           ) : null}
-
-          {!isNew ? (
-            <Pressable onPress={confirmDelete} style={styles.deleteRow} hitSlop={8}>
-              <Text style={styles.deleteText}>Delete note</Text>
-            </Pressable>
-          ) : null}
         </View>
       </ScrollView>
+
+      {/* Say it, take it, keep it. Always there, so a note is three taps
+          from nothing. */}
+      <View style={[styles.bar, { paddingBottom: insets.bottom + space(3) }]}>
+        <Text style={styles.audioLine} numberOfLines={1}>
+          {recording ? `recording ${fmt(seconds)}` : draft.audio ? `${fmt(draft.audio.duration)} recording` : 'no audio yet'}
+        </Text>
+        <View style={styles.barRow}>
+          {draft.audio && !recording ? (
+            <View style={styles.barLeft}>
+              <Pressable onPress={togglePlay} style={styles.round} hitSlop={10}>
+                <Text style={styles.roundGlyph}>{status.playing ? '❚❚' : '▶'}</Text>
+              </Pressable>
+              <Pressable onPress={removeAudio} hitSlop={10}>
+                <Text style={styles.barRemove}>Remove</Text>
+              </Pressable>
+            </View>
+          ) : (
+            <Pressable
+              onPress={recording ? stopRecording : startRecording}
+              style={[styles.round, recording && styles.roundHot]}
+              hitSlop={10}
+              disabled={Platform.OS === 'web'}
+            >
+              <Text style={[styles.roundGlyph, Platform.OS === 'web' && { color: colors.textFaint }]}>{recording ? '■' : '●'}</Text>
+            </Pressable>
+          )}
+
+          <Pressable onPress={canShoot ? fromCamera : fromLibrary} style={styles.shutter} disabled={busy}>
+            <View style={styles.shutterInner} />
+          </Pressable>
+
+          <Pressable onPress={save} style={[styles.round, !empty && styles.roundGo]} hitSlop={10} disabled={busy}>
+            <Text style={[styles.roundGlyph, !empty && { color: colors.accentInk }]}>✓</Text>
+          </Pressable>
+        </View>
+      </View>
     </KeyboardAvoidingView>
   );
 }
+
 
 function Row({ label, children }) {
   return (
@@ -408,18 +439,64 @@ const styles = StyleSheet.create({
     paddingBottom: space(3),
     gap: space(3),
   },
-  cancel: { ...type.body, fontWeight: '600', color: colors.textDim },
-  kicker: { ...type.mono, color: colors.textFaint, flex: 1, textAlign: 'center' },
-  save: { ...type.body, fontWeight: '700', color: colors.accent },
+  headMid: { flex: 1, alignItems: 'center', gap: 1 },
+  headTitle: { ...type.body, fontSize: 17, fontWeight: '700', color: colors.text },
+  headMeta: { ...type.mono, fontSize: 10, color: colors.textFaint },
+  round: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.line,
+  },
+  roundGlyph: { fontSize: 16, color: colors.text },
+  roundGo: { backgroundColor: colors.accent, borderColor: colors.accent },
+  roundHot: { backgroundColor: colors.again, borderColor: colors.again },
+  metaBox: { paddingHorizontal: space(6), paddingBottom: space(2) },
+  stage: { position: 'relative' },
+  counter: {
+    position: 'absolute',
+    left: space(4),
+    bottom: space(4),
+    paddingHorizontal: space(3),
+    paddingVertical: space(1.5),
+    borderRadius: radius.pill,
+    backgroundColor: '#000000AA',
+  },
+  counterText: { ...type.mono, fontSize: 10, color: colors.text },
+  stageActions: { position: 'absolute', right: space(4), bottom: space(4), flexDirection: 'row', gap: space(2) },
+  stageButton: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', backgroundColor: '#000000AA' },
+  stageGlyph: { fontSize: 14, color: colors.text },
+  bar: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    paddingHorizontal: space(6),
+    paddingTop: space(3),
+    backgroundColor: colors.bg,
+    borderTopWidth: 1,
+    borderTopColor: colors.line,
+    gap: space(2),
+  },
+  audioLine: { ...type.mono, fontSize: 10, color: colors.textFaint },
+  barRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  barLeft: { flexDirection: 'row', alignItems: 'center', gap: space(3) },
+  barRemove: { ...type.body, fontSize: 13, fontWeight: '600', color: colors.textDim },
+  shutter: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: colors.line,
+  },
+  shutterInner: { width: 52, height: 52, borderRadius: 26, backgroundColor: colors.text },
   slide: { width: '100%', height: '100%', backgroundColor: colors.surface },
-  remove: { position: 'absolute', top: space(3), right: space(3), width: 32, height: 32, borderRadius: 16, backgroundColor: '#000000AA', alignItems: 'center', justifyContent: 'center' },
-  removeText: { color: colors.text, fontSize: 14, fontWeight: '700' },
-  dotsRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: space(6), paddingTop: space(3) },
-  dots: { flexDirection: 'row', gap: 6 },
-  dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.line },
-  dotOn: { backgroundColor: colors.accent },
-  addMore: { ...type.label, fontSize: 12, color: colors.accent },
-  addRow: { flexDirection: 'row', gap: space(5) },
   dropButtons: { flexDirection: 'row', gap: space(2), marginTop: space(2) },
   dropButton: { paddingHorizontal: space(4), paddingVertical: space(2), borderRadius: radius.pill, borderWidth: 1, borderColor: colors.line },
   dropButtonOn: { backgroundColor: colors.accent, borderColor: colors.accent },
@@ -439,21 +516,10 @@ const styles = StyleSheet.create({
   body: { paddingHorizontal: space(6), paddingTop: space(5) },
   title: { ...type.card, color: colors.text, paddingVertical: space(2) },
   text: { ...type.body, fontSize: 17, lineHeight: 26, color: colors.text, minHeight: 120, paddingVertical: space(2) },
-  rows: { marginTop: space(4), borderTopWidth: 1, borderTopColor: colors.line },
   row: { flexDirection: 'row', alignItems: 'center', gap: space(4), paddingVertical: space(3), borderBottomWidth: 1, borderBottomColor: colors.line, minHeight: 52 },
   rowLabel: { ...type.mono, color: colors.textFaint, width: 56 },
   rowInput: { ...type.body, color: colors.text, paddingVertical: space(1) },
   rowValue: { ...type.body, color: colors.text },
   rowAction: { ...type.body, fontWeight: '600', color: colors.accent },
-  rec: { flexDirection: 'row', alignItems: 'center', gap: space(2) },
-  recDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: colors.again },
-  recText: { ...type.body, fontWeight: '600', color: colors.text },
-  audioRow: { flexDirection: 'row', alignItems: 'center', gap: space(3) },
-  play: { width: 36, height: 36, borderRadius: 18, backgroundColor: colors.surfaceHi, alignItems: 'center', justifyContent: 'center' },
-  playGlyph: { fontSize: 13, color: colors.text },
-  audioText: { ...type.body, color: colors.text, flex: 1 },
-  audioRemove: { ...type.body, fontSize: 13, fontWeight: '600', color: colors.textDim },
   makeHint: { ...type.body, fontSize: 13, color: colors.textFaint, textAlign: 'center', marginTop: space(2) },
-  deleteRow: { alignSelf: 'center', marginTop: space(8) },
-  deleteText: { ...type.body, fontWeight: '600', color: colors.again },
 });

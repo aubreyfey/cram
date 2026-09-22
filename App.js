@@ -834,7 +834,9 @@ function App() {
                 <NoteEditorScreen
                   note={noteDraft.note}
                   notebook={noteDraft.notebook}
+                  notebooks={notebooks}
                   isNew={noteDraft.isNew}
+                  onSwitchNotebook={(nb) => setNoteDraft((d) => (d ? { ...d, notebook: nb } : d))}
                   onSave={commitNote}
                   onDelete={removeNote}
                   onClose={closeNote}
