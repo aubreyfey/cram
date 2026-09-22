@@ -31,6 +31,11 @@ import TalksScreen from './src/screens/TalksScreen';
 import VideoScreen from './src/screens/VideoScreen';
 import SharedDeckScreen from './src/screens/SharedDeckScreen';
 import JournalScreen from './src/screens/JournalScreen';
+import NotebooksScreen from './src/screens/NotebooksScreen';
+import NotebookScreen from './src/screens/NotebookScreen';
+import NoteEditorScreen from './src/screens/NoteEditorScreen';
+import StripScreen from './src/screens/StripScreen';
+import NameSheet from './src/components/NameSheet';
 
 import { MAX_PAGES, generateDeck, generateGuide } from './src/lib/api';
 import { pickDocument, pickFromLibrary } from './src/lib/pickers';
@@ -55,6 +60,19 @@ import { configureNotifications, rearmNag } from './src/lib/reminders';
 import { dropSource, keepSource } from './src/lib/sources';
 import { deleteFigures } from './src/lib/figures';
 import { logJournal } from './src/lib/journal';
+import {
+  deleteFiles,
+  deleteNote,
+  deleteNotebook,
+  fileUri,
+  importImage,
+  loadNotebooks,
+  loadNotes,
+  makeNote,
+  makeNotebook,
+  saveNote,
+  saveNotebook,
+} from './src/lib/notes';
 import { clearShareUrl, deckFromShared, fetchSharedDeck, parseShareUrl } from './src/lib/shareLink';
 import { LIBRARY } from './src/lib/layout';
 import { deleteTalk, loadTalks, saveTalk } from './src/lib/talks';
@@ -112,6 +130,15 @@ function App() {
   // from the URL the app was opened with, on any platform.
   const [shared, setShared] = useState(null);
   const [savingShared, setSavingShared] = useState(false);
+  // Notebooks and notes. noteDraft: { note, notebook, isNew, back } while
+  // the editor is up; stripCtx: { notes, notebook, back }; naming: which
+  // notebook the name sheet is for ({ notebook } to rename, {} for new).
+  const [notebooks, setNotebooks] = useState([]);
+  const [notes, setNotes] = useState([]);
+  const [activeNotebook, setActiveNotebook] = useState(null);
+  const [noteDraft, setNoteDraft] = useState(null);
+  const [stripCtx, setStripCtx] = useState(null);
+  const [naming, setNaming] = useState(null);
 
   const abortRef = useRef(null);
   const activeRef = useRef(null);
@@ -126,6 +153,8 @@ function App() {
     setStreak((await getStreak()).count);
     setExams(await loadExams());
     setTalks(await loadTalks());
+    setNotebooks(await loadNotebooks());
+    setNotes(await loadNotes());
     const profile = await getProfile();
     setNameState(profile.name);
     // First launch only: Volt asks for a name once the opening is done.
@@ -452,6 +481,140 @@ function App() {
     [start],
   );
 
+  // --- notebooks and notes -------------------------------------------------
+  const openNotebook = useCallback((nb) => {
+    setActiveNotebook(nb);
+    setScreen('notebook');
+  }, []);
+
+  // "New" with no notebook picks the most recent one, or makes the first.
+  const newNote = useCallback(
+    async (nb, back = 'notebooks') => {
+      let book = nb || notebooks.find((b) => !b.archived);
+      if (!book) {
+        book = makeNotebook('Notes');
+        setNotebooks(await saveNotebook(book));
+      }
+      setNoteDraft({ note: makeNote(book.id), notebook: book, isNew: true, back });
+      setScreen('note');
+    },
+    [notebooks],
+  );
+
+  const openNote = useCallback(
+    (note, back) => {
+      const book = notebooks.find((b) => b.id === note.notebookId) || null;
+      setNoteDraft({ note, notebook: book, isNew: false, back });
+      setScreen('note');
+    },
+    [notebooks],
+  );
+
+  const closeNote = useCallback(() => {
+    const back = noteDraft?.back || 'notebooks';
+    setNoteDraft(null);
+    setScreen(back);
+  }, [noteDraft]);
+
+  const commitNote = useCallback(
+    async (note) => {
+      setNotes(await saveNote(note));
+      closeNote();
+    },
+    [closeNote],
+  );
+
+  const removeNote = useCallback(
+    async (note) => {
+      setNotes(await deleteNote(note.id));
+      closeNote();
+    },
+    [closeNote],
+  );
+
+  // Study-first: the words become cards like pasted notes; the photos
+  // become cards like a scan. Same quota, same paywall, same study screen.
+  const cardsFromNote = useCallback(
+    async (note) => {
+      const text = (note.text || '').trim();
+      if (text.length >= 40) {
+        await saveNote(note).then(setNotes);
+        setNoteDraft(null);
+        start({ kind: 'text', text, name: note.title || undefined });
+        return;
+      }
+      const pages = (note.images || []).map((i) => ({ uri: fileUri(i) })).filter((p) => p.uri);
+      if (!pages.length) return;
+      await saveNote(note).then(setNotes);
+      setNoteDraft(null);
+      start({ kind: 'images', pages, name: note.title || undefined });
+    },
+    [start],
+  );
+
+  const nameNotebook = useCallback(
+    async (title) => {
+      if (naming?.notebook) {
+        setNotebooks(await saveNotebook({ ...naming.notebook, title }));
+        if (activeNotebook?.id === naming.notebook.id) setActiveNotebook({ ...naming.notebook, title });
+      } else {
+        const book = makeNotebook(title);
+        setNotebooks(await saveNotebook(book));
+        openNotebook(book);
+      }
+      setNaming(null);
+    },
+    [naming, activeNotebook, openNotebook],
+  );
+
+  const coverNotebook = useCallback(async (nb) => {
+    try {
+      const picked = await pickFromLibrary();
+      if (!picked?.pages?.length) return;
+      const cover = await importImage(picked.pages[0].uri);
+      if (nb.cover?.file) deleteFiles([nb.cover.file]);
+      const next = { ...nb, cover: { file: cover.file, uri: cover.uri } };
+      setNotebooks(await saveNotebook(next));
+      setActiveNotebook((a) => (a?.id === nb.id ? next : a));
+    } catch (e) {
+      alert("Couldn't set that cover", e.message);
+    }
+  }, []);
+
+  const archiveNotebook = useCallback(async (nb) => {
+    const next = { ...nb, archived: !nb.archived };
+    setNotebooks(await saveNotebook(next));
+    setActiveNotebook((a) => (a?.id === nb.id ? next : a));
+  }, []);
+
+  const removeNotebook = useCallback(async (nb) => {
+    const r = await deleteNotebook(nb.id);
+    setNotebooks(r.notebooks);
+    setNotes(r.notes);
+    setActiveNotebook((a) => (a?.id === nb.id ? null : a));
+    setScreen('notebooks');
+  }, []);
+
+  const notebookActions = useCallback(
+    (nb) =>
+      alert(nb.title, null, [
+        { text: 'Rename', onPress: () => setNaming({ notebook: nb }) },
+        { text: 'Change cover', onPress: () => coverNotebook(nb) },
+        { text: nb.archived ? 'Unarchive' : 'Archive', onPress: () => archiveNotebook(nb) },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () =>
+            alert('Delete notebook?', `"${nb.title}" and every note in it will be gone.`, [
+              { text: 'Cancel', style: 'cancel' },
+              { text: 'Delete', style: 'destructive', onPress: () => removeNotebook(nb) },
+            ]),
+        },
+        { text: 'Cancel', style: 'cancel' },
+      ]),
+    [coverNotebook, archiveNotebook, removeNotebook],
+  );
+
   const writeGuide = useCallback(async (exam, plan) => {
     const guide = await generateGuide(
       { title: exam.title, cards: plan.cards },
@@ -627,6 +790,73 @@ function App() {
               </Screen>
             )}
 
+            {screen === 'notebooks' && (
+              <Screen preset="push" maxWidth={LIBRARY}>
+                <NotebooksScreen
+                  notebooks={notebooks}
+                  notes={notes}
+                  onOpenNotebook={openNotebook}
+                  onCreateNotebook={() => setNaming({})}
+                  onRenameNotebook={(nb) => setNaming({ notebook: nb })}
+                  onCoverNotebook={coverNotebook}
+                  onArchiveNotebook={archiveNotebook}
+                  onDeleteNotebook={removeNotebook}
+                  onOpenNote={(n) => openNote(n, 'notebooks')}
+                  onNewNote={(nb) => newNote(nb, 'notebooks')}
+                  onStrip={(picked) => {
+                    setStripCtx({ notes: picked, notebook: null, back: 'notebooks' });
+                    setScreen('strip');
+                  }}
+                  onClose={() => setScreen('library')}
+                />
+              </Screen>
+            )}
+
+            {screen === 'notebook' && activeNotebook && (
+              <Screen preset="push">
+                <NotebookScreen
+                  notebook={notebooks.find((b) => b.id === activeNotebook.id) ?? activeNotebook}
+                  notes={notes.filter((n) => n.notebookId === activeNotebook.id)}
+                  onOpenNote={(n) => openNote(n, 'notebook')}
+                  onNewNote={(nb) => newNote(nb, 'notebook')}
+                  onEdit={notebookActions}
+                  onStrip={(picked) => {
+                    setStripCtx({ notes: picked, notebook: activeNotebook, back: 'notebook' });
+                    setScreen('strip');
+                  }}
+                  onClose={() => setScreen('notebooks')}
+                />
+              </Screen>
+            )}
+
+            {screen === 'note' && noteDraft && (
+              <Screen preset="modal">
+                <NoteEditorScreen
+                  note={noteDraft.note}
+                  notebook={noteDraft.notebook}
+                  isNew={noteDraft.isNew}
+                  onSave={commitNote}
+                  onDelete={removeNote}
+                  onClose={closeNote}
+                  onMakeCards={cardsFromNote}
+                />
+              </Screen>
+            )}
+
+            {screen === 'strip' && stripCtx && (
+              <Screen preset="modal">
+                <StripScreen
+                  notes={stripCtx.notes}
+                  notebook={stripCtx.notebook ?? notebooks.find((b) => b.id === stripCtx.notes[0]?.notebookId) ?? null}
+                  onClose={() => {
+                    const back = stripCtx.back;
+                    setStripCtx(null);
+                    setScreen(back);
+                  }}
+                />
+              </Screen>
+            )}
+
             {screen === 'talks' && (
               <Screen preset="push">
                 <TalksScreen
@@ -798,6 +1028,8 @@ function App() {
                   onRename={(d) => setRenaming(d)}
                   onOpenSource={(d) => openSource(d, 'library')}
                   talkCount={talks.length}
+                  noteCount={notes.length}
+                  onOpenNotebooks={() => setScreen('notebooks')}
                   onOpenTalks={() => setScreen('talks')}
                   onAddPages={appendToDeck}
                   onCreate={() => setScreen('create')}
@@ -868,6 +1100,14 @@ function App() {
               visible={!!renaming}
               onSave={renameDeck}
               onClose={() => setRenaming(null)}
+            />
+            <NameSheet
+              visible={!!naming}
+              heading={naming?.notebook ? 'Rename' : 'New notebook'}
+              initial={naming?.notebook?.title || ''}
+              placeholder="Biology, Japan trip, Random thoughts"
+              onSave={nameNotebook}
+              onClose={() => setNaming(null)}
             />
 
             {!opening && askName ? (

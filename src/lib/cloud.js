@@ -14,6 +14,7 @@ import {
 import { loadTalks, writeMergedTalks } from './talks';
 import { getProfile, writeMergedName } from './profile';
 import { loadJournal, mergeJournal, writeMergedJournal } from './journal';
+import { loadNotebooks, loadNotes, mergeNotes, writeMergedNotes } from './notes';
 
 // Cloud backup. Signed in, everything that matters lives in one row per
 // person (supabase/schema.sql → backups): decks with their schedule, exams,
@@ -36,6 +37,8 @@ import { loadJournal, mergeJournal, writeMergedJournal } from './journal';
 //   name    this phone's, unless it has none
 //   journal per day, the larger number per field - a synced rating must
 //           not count twice
+//   notes   notebooks and notes: union by id, the more recently edited copy
+//           wins; photos and recordings stay on the phone that made them
 //   deleted union - a deck deleted anywhere stays deleted everywhere
 //
 //   sync()          -> { changed } - did the merge alter local data
@@ -158,6 +161,7 @@ async function run() {
       await writeMerged({ decks: merged.decks, exams: merged.exams, streak: merged.streak, deleted: merged.deleted });
       await writeMergedTalks(merged.talks);
       await writeMergedJournal(merged.journal);
+      await writeMergedNotes({ notebooks: merged.notebooks, notes: merged.notes });
       if (merged.profile.name !== local.profile.name) await writeMergedName(merged.profile.name);
     }
   }
@@ -168,6 +172,8 @@ async function run() {
     ...merged,
     savedAt: Date.now(),
     talks: merged.talks.map(({ uri, ...t }) => t),
+    // Same for notes: file names travel, blob URLs (web) do not.
+    notes: merged.notes.map((n) => ({ ...n, images: (n.images || []).map(({ uri, ...i }) => i), audio: n.audio ? (({ uri, ...a }) => a)(n.audio) : null })),
   };
   const { error: upErr } = await supabase()
     .from('backups')
@@ -182,7 +188,7 @@ async function run() {
 }
 
 async function snapshot() {
-  const [decks, exams, talks, streak, deleted, profile, journal] = await Promise.all([
+  const [decks, exams, talks, streak, deleted, profile, journal, notebooks, notes] = await Promise.all([
     loadDecks(),
     loadExams(),
     loadTalks(),
@@ -190,8 +196,10 @@ async function snapshot() {
     loadDeleted(),
     getProfile(),
     loadJournal(),
+    loadNotebooks(),
+    loadNotes(),
   ]);
-  return { cram: FORMAT, decks, exams, talks, streak, deleted, profile: { name: profile.name || '' }, journal };
+  return { cram: FORMAT, decks, exams, talks, streak, deleted, profile: { name: profile.name || '' }, journal, notebooks, notes };
 }
 
 // Exported for the tests; nothing else calls it directly.
@@ -215,8 +223,10 @@ export function merge(local, remote) {
 
   const name = local.profile.name || remote.profile?.name || '';
   const journal = mergeJournal(local.journal, remote.journal);
+  const notebooks = mergeNotes(local.notebooks, remote.notebooks, deleted);
+  const notes = mergeNotes(local.notes, remote.notes, deleted);
 
-  return { cram: FORMAT, decks, exams, talks, streak, deleted, profile: { name }, journal };
+  return { cram: FORMAT, decks, exams, talks, streak, deleted, profile: { name }, journal, notebooks, notes };
 }
 
 // This phone's copy wins; the other phone only fills in what is missing.
@@ -234,6 +244,8 @@ function differs(a, b) {
     JSON.stringify(a.streak) !== JSON.stringify(b.streak) ||
     a.profile.name !== b.profile.name ||
     JSON.stringify(a.journal || {}) !== JSON.stringify(b.journal || {}) ||
+    JSON.stringify(a.notebooks || []) !== JSON.stringify(b.notebooks || []) ||
+    JSON.stringify(a.notes || []) !== JSON.stringify(b.notes || []) ||
     Object.keys(a.deleted).length !== Object.keys(b.deleted).length
   );
 }

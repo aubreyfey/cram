@@ -60,9 +60,15 @@ src/screens/
   StudyScreen.js           card stack + rating, edit/delete a card
   LibraryScreen.js         this week (exams), saved decks, streak, due
   ExamEditorScreen.js      name, date, linked decks
+  NotebooksScreen.js       the shelf (books with covers) + the timeline tab + search
+  NotebookScreen.js        one notebook: cover, its notes by day, new note, strip
+  NoteEditorScreen.js      photos on top, words under, when / where / say it
+  StripScreen.js           picked notes -> one tall image, save or share
   PaywallScreen.js         three plans
 src/components/
   Flashcard.js             tap to flip, swipe to rate
+  NoteFeed.js              the editorial feed: day headers, entries, photo layouts
+  NameSheet.js             one-field name prompt (new / rename notebook)
   Mascot.js                Volt, the owl - four moods, react-native-svg
   CardEditor.js            fix a card the model got wrong
   ErrorBoundary.js         crash screen with a way back
@@ -73,6 +79,7 @@ src/lib/
   storage.js               decks, free-tier meter, streak (AsyncStorage)
   cloud.js                 cloud backup: pull, merge, push, per account
   journal.js               one entry per day: scans, cards rated, got-it, talks
+  notes.js                 notebooks + notes: photos, words, audio, place, by day
   layout.js                phone or wide? Screen centres a column, Library goes to two
   account.js               sign-in: email + one-time code (Supabase)
   srs.js                   trimmed SM-2 scheduling
@@ -274,6 +281,24 @@ just "more of the same". The check lives in `canUseDocuments()` in
   Most pages produce none, which is right. Files live in the app's documents
   folder and go with the deck when it is deleted; the cloud backup carries
   the card, not the picture.
+- **Notebooks and notes.** Library → Notebooks. The visual side of studying:
+  a photo of the board, the diagram redrawn, a paragraph in your own words,
+  thirty seconds of you saying it - one note, in a notebook per subject. The
+  shelf shows notebooks as books (cover, name, count; long-press to rename,
+  change cover, archive, delete; "+" to add). The **Timeline** tab is every
+  note from every notebook by day - `SEP 18 · GRAND YOHO`, then each entry
+  with its time, photos (one wide, two or three across, a 2x2 with "+N"),
+  and the words under them. Search spans titles, text, places and notebook
+  names. The editor: photos first (swipe between them, take or pick more),
+  title and text under, then when (native picker), where (a place, typed)
+  and "say it" (record; play back; remove). **Make cards from this** turns
+  the words into cards like pasted notes, or the photos into cards like a
+  scan - same quota, same study screen. Long-press an entry, pick a few,
+  **Make a strip**: one tall image with the notebook name, the date, every
+  picked note, and a small mark - Save to device or Share. Photos and
+  recordings live in the app's documents folder; the cloud backup carries
+  the notes and file names, not the bytes (like talks). Strips and the
+  native date picker are phone-only; the web build shows the rest.
 - **Journal.** Tap the streak in the Library (or the Journal row before
   there is one). The streak, this week - days, cards rated, % got it, scans,
   minutes talking - then every day that had something in it. Numbers only,

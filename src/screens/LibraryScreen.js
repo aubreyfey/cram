@@ -43,6 +43,8 @@ export default function LibraryScreen({
   onOpenSource,
   talkCount = 0,
   onOpenTalks,
+  noteCount = 0,
+  onOpenNotebooks,
   onCreate,
   onSettings,
   onJournal,
@@ -223,6 +225,19 @@ export default function LibraryScreen({
               </View>
             </Animated.View>
           ) : null}
+            {onOpenNotebooks ? (
+              <Pressable onPress={onOpenNotebooks} style={styles.talksRow}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.talksTitle}>Notebooks</Text>
+                  <Text style={styles.talksSub}>
+                    {noteCount
+                      ? `${noteCount} ${noteCount === 1 ? 'note' : 'notes'} - photos of the board, diagrams, your own words`
+                      : 'Photos of the board, diagrams, your own words - by day, per subject'}
+                  </Text>
+                </View>
+                <Text style={styles.chevron}>›</Text>
+              </Pressable>
+            ) : null}
             {onJournal && streak <= 1 && decks.length ? (
               <Pressable onPress={onJournal} style={styles.talksRow}>
                 <View style={{ flex: 1 }}>

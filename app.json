@@ -52,6 +52,13 @@
       "expo-document-picker",
       "expo-sharing",
       [
+        "expo-media-library",
+        {
+          "savePhotosPermission": "Save a Cram strip to your photos.",
+          "photosPermission": "Import a photo into a note."
+        }
+      ],
+      [
         "expo-notifications",
         {
           "color": "#D4FF3F",
