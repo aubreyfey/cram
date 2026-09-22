@@ -1,5 +1,6 @@
 import { Platform, Share } from 'react-native';
 import { exportDeckFile } from './backup';
+import { exportDeckMarkdown } from './markdown';
 import { createShareLink } from './shareLink';
 import { firstName, getProfile } from './profile';
 import { alert } from './alert';
@@ -64,6 +65,7 @@ export function shareDeck(deck) {
   alert('Share deck', null, [
     { text: 'As a link - one tap to save', onPress: () => shareDeckLink(deck) },
     { text: 'As text - paste anywhere', onPress: () => shareDeckText(deck) },
+    { text: 'As Markdown - for Notes, Obsidian, Notion', onPress: () => exportDeckMarkdown(deck).catch(() => {}) },
     { text: 'As a file - opens in Cram', onPress: () => exportDeckFile(deck).catch(() => {}) },
     { text: 'Cancel', style: 'cancel' },
   ]);

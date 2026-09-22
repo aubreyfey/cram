@@ -26,9 +26,10 @@ function serialise(decks) {
 }
 
 // Hands the JSON to the share sheet (native) or triggers a download (web).
-async function shareJson(name, json) {
+// Also used for Markdown (markdown.js): same share sheet, different type.
+export async function shareTextFile(name, text, mimeType = 'application/json', UTI = 'public.json') {
   if (Platform.OS === 'web') {
-    const blob = new Blob([json], { type: 'application/json' });
+    const blob = new Blob([text], { type: mimeType });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -40,22 +41,22 @@ async function shareJson(name, json) {
   const { File, Paths } = await import('expo-file-system');
   const Sharing = await import('expo-sharing');
   const file = new File(Paths.cache, name);
-  file.write(json);
+  file.write(text);
   await Sharing.shareAsync(file.uri, {
-    mimeType: 'application/json',
-    UTI: 'public.json',
+    mimeType,
+    UTI,
     dialogTitle: name,
   });
 }
 
 export async function exportBackup() {
   const decks = await loadDecks();
-  await shareJson(`cram-backup-${stamp()}.json`, serialise(decks));
+  await shareTextFile(`cram-backup-${stamp()}.json`, serialise(decks));
   return decks.length;
 }
 
 export async function exportDeckFile(deck) {
-  await shareJson(`${safeName(deck.title)}.cram.json`, serialise([deck]));
+  await shareTextFile(`${safeName(deck.title)}.cram.json`, serialise([deck]));
 }
 
 async function readText(uri) {

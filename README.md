@@ -63,6 +63,7 @@ src/lib/
   account.js               sign-in: email + one-time code (Supabase)
   srs.js                   trimmed SM-2 scheduling
   share.js                 deck -> plain text for the share sheet
+  markdown.js              deck or study guide -> .md for Notes, Obsidian, Notion
   shareLink.js             deck -> a link (<site>/d/<id>) and back
   entitlements.js          plans + the RevenueCat seam  ← see TODO
 assets/mascot/             Volt as clean SVG: transparent + app-icon variant
@@ -265,6 +266,11 @@ just "more of the same". The check lives in `canUseDocuments()` in
   gets it for free; the Library gets 980px and two columns of decks; the
   camera stays full-bleed. The same rules make the web build look right in
   a desktop browser.
+- **Export as Markdown.** Share → "As Markdown" on a deck; "Export" on a
+  study guide. A heading, a numbered question/answer list (hints in
+  italics), or the guide with its must-knows as checkboxes - opens in
+  Notes, Obsidian, Notion, anything. One way only; the `.cram.json` file is
+  the copy that comes back.
 - **Share a deck by link.** Share → "As a link". The API stores a cards-only
   copy (no schedule, no pictures) under a random id in Supabase - via the
   service role, so the anon key in the app can never write or list them -

@@ -8,6 +8,7 @@ import PrimaryButton from '../components/PrimaryButton';
 import { countdown, daysUntil, prettyDate } from '../lib/exams';
 import { studyPlan, todayLine } from '../lib/plan';
 import { alert } from '../lib/alert';
+import { exportGuideMarkdown } from '../lib/markdown';
 import { colors, radius, space, type } from '../theme';
 
 // One exam, as a place. The countdown, the plan for today, the weak spots,
@@ -106,9 +107,14 @@ export default function ExamScreen({ exam, decks, onStudy, onEdit, onGuide, onTa
           <View style={styles.cardHead}>
             <Text style={styles.kicker}>STUDY GUIDE</Text>
             {guide ? (
-              <Pressable onPress={makeGuide} hitSlop={8} disabled={making}>
-                <Text style={styles.redo}>{making ? 'Rewriting…' : stale ? 'Decks changed - rewrite' : 'Rewrite'}</Text>
-              </Pressable>
+              <View style={styles.headActions}>
+                <Pressable onPress={() => exportGuideMarkdown(exam, guide).catch(() => {})} hitSlop={8}>
+                  <Text style={styles.redo}>Export</Text>
+                </Pressable>
+                <Pressable onPress={makeGuide} hitSlop={8} disabled={making}>
+                  <Text style={styles.redo}>{making ? 'Rewriting…' : stale ? 'Decks changed - rewrite' : 'Rewrite'}</Text>
+                </Pressable>
+              </View>
             ) : null}
           </View>
 
@@ -220,6 +226,7 @@ const styles = StyleSheet.create({
   today: { ...type.body, fontSize: 18, fontWeight: '700', color: colors.text, marginTop: space(2) },
   sub: { ...type.body, fontSize: 14, color: colors.textDim, marginTop: space(2) },
   weak: { ...type.body, fontSize: 14, color: colors.text, marginTop: space(2) },
+  headActions: { flexDirection: 'row', gap: space(4) },
   redo: { ...type.body, fontSize: 13, fontWeight: '700', color: colors.accent },
   talkRow: {
     flexDirection: 'row',
