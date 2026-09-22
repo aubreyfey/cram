@@ -189,12 +189,14 @@ just "more of the same". The check lives in `canUseDocuments()` in
   people mix up, and what to do the night before. Cached on the exam; it
   offers a rewrite when the decks change. Free users get the free model.
 
-- **Four modes, one schedule.** Chips under the deck title switch between
+- **Five modes, one schedule.** Chips under the deck title switch between
   **Cards** (flip and rate), **Quiz** (multiple choice - the wrong answers are
   other cards from the same deck, so it is the first pass over new material),
-  **Write** (type the answer, get an honesty check, grade yourself) and
-  **Blitz** (60 seconds, Nope / Got it, for the night before). Every mode
-  rates the same cards into the same SM-2 schedule.
+  **Write** (type the answer, get an honesty check, grade yourself),
+  **Blitz** (60 seconds, Nope / Got it, for the night before) and **Listen**
+  (the deck read aloud - question, a beat, answer, next - for the walk to
+  class; tap Again / Got it to rate a card, or let it roll on unrated).
+  Every mode rates the same cards into the same SM-2 schedule.
 - **Swipe or tap to rate.** Again / Hard / Got it feed a trimmed SM-2; a card
   you know comes back in 1, 3, then ~8 days.
 - **Daily reminder, and the nag.** Settings (gear in the library) → pick a

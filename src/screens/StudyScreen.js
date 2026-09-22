@@ -15,6 +15,7 @@ import Mascot from '../components/Mascot';
 import Flashcard from '../components/Flashcard';
 import PrimaryButton from '../components/PrimaryButton';
 import QuizStage from '../components/QuizStage';
+import ListenStage from '../components/ListenStage';
 import WriteStage from '../components/WriteStage';
 import { RATING, dueCards, schedule } from '../lib/srs';
 import { shareDeck } from '../lib/share';
@@ -25,14 +26,16 @@ import { maybeAskForReview, shareCram } from '../lib/growth';
 import { firstName } from '../lib/profile';
 import { colors, motion, radius, space, type } from '../theme';
 
-// Four ways through the same queue, in rough order of difficulty. Quiz is
+// Five ways through the same queue, in rough order of difficulty. Quiz is
 // recognition (first pass), Cards and Write are recall, Blitz is Cards
-// against a clock for the night before. All of them feed the same schedule.
+// against a clock for the night before, Listen is the deck read aloud for
+// the walk to class. All of them feed the same schedule.
 const MODES = [
   { key: 'cards', label: 'Cards' },
   { key: 'quiz', label: 'Quiz' },
   { key: 'write', label: 'Write' },
   { key: 'blitz', label: 'Blitz' },
+  { key: 'listen', label: 'Listen' },
 ];
 const BLITZ_SECONDS = 60;
 
@@ -132,6 +135,12 @@ export default function StudyScreen({
 
     setRatings((r) => ({ ...r, [rating]: (r[rating] || 0) + 1 }));
     react(rating);
+    advance();
+  };
+
+  // Listen moves on by itself when nobody taps: the card is heard, not
+  // graded, and its schedule is left alone.
+  const advance = () => {
     const next = index + 1;
     progress.value = withSpring(next / queue.length, motion.soft);
     setIndex(next);
@@ -295,6 +304,10 @@ export default function StudyScreen({
       ) : mode === 'write' ? (
         <View style={styles.stageFlat}>
           <WriteStage card={queue[index]} onRate={rate} />
+        </View>
+      ) : mode === 'listen' ? (
+        <View style={styles.stageFlat}>
+          <ListenStage card={queue[index]} onRate={rate} onSkip={advance} />
         </View>
       ) : (
         <View style={styles.stage}>
