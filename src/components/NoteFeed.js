@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { groupByDay } from '../lib/notes';
 import NoteImage from './NoteImage';
@@ -66,83 +66,71 @@ export function DayHeader({ day, place }) {
   );
 }
 
+// The entry: a narrow gutter with the time, then the note. Photos sit in
+// a row at a fixed height - one at its own shape, several side by side
+// and scrolling if they run past the edge - so a day of twelve photos
+// reads as a strip, not a wall. Words under the photos.
 export function NoteEntry({ note, onPress, onLongPress, selecting, selected, onPhoto }) {
   const images = note.images || [];
   return (
     <Pressable onPress={onPress} onLongPress={onLongPress} delayLongPress={350} style={[styles.entry, selecting && selected && styles.entrySelected]}>
-      <View style={styles.entryHead}>
+      <View style={styles.gutter}>
         <Text style={styles.time}>{timeLabel(note.at)}</Text>
         {selecting ? (
           <View style={[styles.check, selected && styles.checkOn]}>{selected ? <Text style={styles.checkMark}>✓</Text> : null}</View>
         ) : null}
       </View>
-      {images.length ? <Photos images={images} onPress={onPhoto} onLongPress={onLongPress} /> : null}
-      {note.title ? <Text style={styles.title}>{note.title}</Text> : null}
-      {note.text ? (
-        <Text style={styles.text} numberOfLines={images.length ? 6 : 12}>
-          {note.text}
-        </Text>
-      ) : null}
-      {note.audio ? (
-        <View style={styles.audio}>
-          <Text style={styles.audioGlyph}>▶</Text>
-          <Text style={styles.audioText}>{fmt(note.audio.duration)} recording</Text>
-        </View>
-      ) : null}
+      <View style={styles.entryBody}>
+        {images.length ? <Photos images={images} onPress={onPhoto} onLongPress={onLongPress} scroll /> : null}
+        {note.title ? <Text style={styles.title}>{note.title}</Text> : null}
+        {note.text ? (
+          <Text style={styles.text} numberOfLines={images.length ? 5 : 10}>
+            {note.text}
+          </Text>
+        ) : null}
+        {note.audio ? (
+          <View style={styles.audio}>
+            <Text style={styles.audioGlyph}>▶</Text>
+            <Text style={styles.audioText}>{fmt(note.audio.duration)} recording</Text>
+          </View>
+        ) : null}
+      </View>
     </Pressable>
   );
 }
 
-// One photo: full width at its own shape (capped tall). Two: side by side.
-// Three: a row. Four or more: a 2x2 with "+N" on the last.
-// onPress(index) makes each photo a tap target; a long-press falls through
-// to the entry (selection). Without it the photos are plain.
-export function Photos({ images, gap = space(1.5), radiusSize = radius.md, onPress, onLongPress }) {
+// Photos in a row at a fixed height, each at its own aspect. One photo
+// gets a little more height. `scroll` lets a long row run off the edge
+// and scroll (the feed); without it the row wraps (the strip, which is
+// captured as a still).
+//   onPress(index) makes each photo a tap target; a long-press falls
+//   through to the entry (selection).
+export const PHOTO_H = 132;
+export const SINGLE_H = 168;
+
+export function Photos({ images, onPress, onLongPress, scroll = false, gap = space(1.5), radiusSize = radius.md }) {
   const n = images.length;
   const tap = { onPress, onLongPress };
-  if (n === 1) {
-    const img = images[0];
-    const ratio = img.width && img.height ? Math.max(img.width / img.height, 0.8) : 4 / 3;
+  const h = n === 1 ? SINGLE_H : PHOTO_H;
+  const tiles = images.map((img, i) => {
+    const ratio = img.width && img.height ? Math.min(Math.max(img.width / img.height, 0.6), 2.2) : 4 / 3;
     return (
-      <Tap {...tap} i={0} style={[styles.single, { aspectRatio: ratio, borderRadius: radiusSize }]}>
+      <Tap {...tap} key={img.file || img.uri || i} i={i} style={[styles.tile, { height: h, width: Math.round(h * ratio), borderRadius: radiusSize }]}>
         <NoteImage image={img} style={styles.fill} />
       </Tap>
     );
-  }
-  if (n === 2 || n === 3) {
+  });
+  if (n === 1) return <View style={styles.rowWrap}>{tiles}</View>;
+  if (scroll) {
     return (
-      <View style={[styles.row, { gap }]}>
-        {images.map((img, i) => (
-          <Tap {...tap} key={img.file || img.uri || i} i={i} style={[styles.photo, styles.square, { borderRadius: radiusSize }]}>
-            <NoteImage image={img} style={styles.fill} />
-          </Tap>
-        ))}
-      </View>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap, paddingRight: space(6) }} style={styles.rowScroll}>
+        {tiles}
+      </ScrollView>
     );
   }
-  const four = images.slice(0, 4);
-  return (
-    <View style={{ gap }}>
-      {[four.slice(0, 2), four.slice(2, 4)].map((pair, r) => (
-        <View key={r} style={[styles.row, { gap }]}>
-          {pair.map((img, i) => {
-            const last = r === 1 && i === 1 && n > 4;
-            return (
-              <Tap {...tap} key={img.file || img.uri || i} i={r * 2 + i} style={[styles.photo, styles.square, { borderRadius: radiusSize }]}>
-                <NoteImage image={img} style={styles.fill} />
-                {last ? (
-                  <View style={[styles.more, { borderRadius: radiusSize }]}>
-                    <Text style={styles.moreText}>+{n - 4}</Text>
-                  </View>
-                ) : null}
-              </Tap>
-            );
-          })}
-        </View>
-      ))}
-    </View>
-  );
+  return <View style={[styles.rowWrap, { gap }]}>{tiles}</View>;
 }
+
 
 // A photo that can be tapped (the viewer) and long-pressed (selection), or
 // just a photo. Module-level so React keeps the image mounted across renders.
@@ -181,23 +169,20 @@ const styles = StyleSheet.create({
   dayHead: { paddingHorizontal: space(6), paddingTop: space(6), paddingBottom: space(2) },
   dayText: { ...type.mono, color: colors.textDim },
   dayRule: { height: 1, backgroundColor: colors.line, marginTop: space(2) },
-  entry: { paddingHorizontal: space(6), paddingVertical: space(4), gap: space(3) },
+  entry: { flexDirection: 'row', paddingLeft: space(5), paddingRight: space(6), paddingVertical: space(3) },
   entrySelected: { backgroundColor: colors.accent + '14' },
-  entryHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  time: { ...type.mono, fontSize: 11, color: colors.textFaint },
+  gutter: { width: 62, paddingTop: 2, gap: space(2) },
+  entryBody: { flex: 1, gap: space(2), minWidth: 0 },
+  time: { ...type.mono, fontSize: 10, color: colors.textFaint },
   check: { width: 22, height: 22, borderRadius: 11, borderWidth: 1.5, borderColor: colors.line, alignItems: 'center', justifyContent: 'center' },
   checkOn: { backgroundColor: colors.accent, borderColor: colors.accent },
   checkMark: { ...type.label, fontSize: 12, color: colors.accentInk },
-  title: { ...type.body, fontSize: 18, fontWeight: '700', color: colors.text },
-  text: { ...type.body, color: colors.textDim },
-  row: { flexDirection: 'row' },
-  photo: { flex: 1, backgroundColor: colors.surface, overflow: 'hidden' },
-  single: { width: '100%', backgroundColor: colors.surface, overflow: 'hidden' },
-  square: { width: '100%', aspectRatio: 1 },
+  title: { ...type.body, fontSize: 16, fontWeight: '700', color: colors.text, marginTop: space(1) },
+  text: { ...type.body, fontSize: 14, lineHeight: 21, color: colors.textDim },
+  rowScroll: { marginRight: -space(6) },
+  rowWrap: { flexDirection: 'row', flexWrap: 'wrap' },
+  tile: { backgroundColor: colors.surface, overflow: 'hidden', maxWidth: '100%' },
   fill: { width: '100%', height: '100%' },
-  missing: { backgroundColor: colors.surface },
-  more: { ...StyleSheet.absoluteFillObject, backgroundColor: '#000000AA', alignItems: 'center', justifyContent: 'center' },
-  moreText: { ...type.title, fontSize: 22, color: colors.text },
   audio: { flexDirection: 'row', alignItems: 'center', gap: space(2), alignSelf: 'flex-start', paddingHorizontal: space(3), paddingVertical: space(1.5), borderRadius: radius.pill, borderWidth: 1, borderColor: colors.line },
   audioGlyph: { fontSize: 10, color: colors.accent },
   audioText: { ...type.mono, fontSize: 10, color: colors.textDim },

@@ -23,7 +23,7 @@ const NOTES_KEY = 'cram.notes.v1';
 const DIR = 'notes';
 const MAX_IMAGE = 1600;
 
-export const MAX_IMAGES = 12;
+export const MAX_IMAGES = 24;
 export const MAX_TITLE = 80;
 export const MAX_TEXT = 8000;
 
