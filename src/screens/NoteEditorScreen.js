@@ -45,7 +45,7 @@ const MAX_RECORD = 10 * 60;
 
 export default function NoteEditorScreen({ note, notebook, notebooks = [], isNew, onSave, onDelete, onClose, onMakeCards, onSwitchNotebook }) {
   const insets = useSafeAreaInsets();
-  const { width } = useLayout();
+  const { width, height } = useLayout();
   const [draft, setDraft] = useState(note);
   const [page, setPage] = useState(0);
   const [busy, setBusy] = useState(false);
@@ -57,8 +57,13 @@ export default function NoteEditorScreen({ note, notebook, notebooks = [], isNew
   const empty = isEmptyNote(draft);
   const patch = (p) => setDraft((d) => ({ ...d, ...p }));
 
+  // Expanded: the photo gets the screen and the words step out of the way,
+  // for reading a board shot back. Shrinks again on the same button.
+  const [expanded, setExpanded] = useState(false);
+
   // A wide column, not the whole pane, on an iPad.
   const pageW = Math.min(width, 640);
+  const photoH = expanded ? Math.max(pageW * 0.92, height - insets.top - insets.bottom - 200) : pageW * 0.92;
 
   // --- photos --------------------------------------------------------------
   const addImages = async (uris) => {
@@ -232,9 +237,9 @@ export default function NoteEditorScreen({ note, notebook, notebooks = [], isNew
             </Text>
           </Pressable>
         </View>
-        {!isNew ? (
-          <Pressable onPress={confirmDelete} style={styles.round} hitSlop={10}>
-            <Text style={[styles.roundGlyph, { color: colors.again }]}>✕</Text>
+        {draft.images?.length ? (
+          <Pressable onPress={() => setExpanded((x) => !x)} style={[styles.round, expanded && styles.roundGo]} hitSlop={10}>
+            <Text style={[styles.roundGlyph, expanded && { color: colors.accentInk }]}>{expanded ? '⤡' : '⤢'}</Text>
           </Pressable>
         ) : (
           <View style={styles.round} />
@@ -242,7 +247,7 @@ export default function NoteEditorScreen({ note, notebook, notebooks = [], isNew
       </View>
 
       <ScrollView contentContainerStyle={{ paddingBottom: insets.bottom + space(32) }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-        {meta ? (
+        {meta && !expanded ? (
           <Animated.View entering={FadeIn.duration(180)} style={styles.metaBox}>
             <Row label="WHEN">
               <When at={draft.at} onChange={(at) => patch({ at })} />
@@ -269,8 +274,8 @@ export default function NoteEditorScreen({ note, notebook, notebooks = [], isNew
               onMomentumScrollEnd={(e) => setPage(Math.round(e.nativeEvent.contentOffset.x / pageW))}
             >
               {draft.images.map((img, i) => (
-                <Pressable key={img.file || img.uri || i} onPress={() => setViewing(i)} style={{ width: pageW, height: pageW * 0.92 }}>
-                  <NoteImage image={img} style={styles.slide} resizeMode="cover" />
+                <Pressable key={img.file || img.uri || i} onPress={() => setViewing(i)} style={{ width: pageW, height: photoH }}>
+                  <NoteImage image={img} style={styles.slide} resizeMode={expanded ? 'contain' : 'cover'} />
                 </Pressable>
               ))}
             </ScrollView>
@@ -305,7 +310,7 @@ export default function NoteEditorScreen({ note, notebook, notebooks = [], isNew
           </View>
         )}
 
-        <View style={styles.body}>
+        <View style={[styles.body, expanded && styles.hidden]} pointerEvents={expanded ? 'none' : 'auto'}>
           <TextInput
             style={styles.title}
             value={draft.title}
@@ -334,6 +339,12 @@ export default function NoteEditorScreen({ note, notebook, notebooks = [], isNew
                 {(draft.text || '').trim().length >= 40 && draft.images?.length ? ' - or the photos, if you clear the text' : ''}
               </Text>
             </Animated.View>
+          ) : null}
+
+          {!isNew ? (
+            <Pressable onPress={confirmDelete} style={styles.deleteRow} hitSlop={8}>
+              <Text style={styles.deleteText}>Delete note</Text>
+            </Pressable>
           ) : null}
         </View>
       </ScrollView>
@@ -522,4 +533,7 @@ const styles = StyleSheet.create({
   rowValue: { ...type.body, color: colors.text },
   rowAction: { ...type.body, fontWeight: '600', color: colors.accent },
   makeHint: { ...type.body, fontSize: 13, color: colors.textFaint, textAlign: 'center', marginTop: space(2) },
+  hidden: { height: 0, opacity: 0, overflow: 'hidden', paddingVertical: 0 },
+  deleteRow: { alignSelf: 'center', marginTop: space(8) },
+  deleteText: { ...type.body, fontWeight: '600', color: colors.again },
 });

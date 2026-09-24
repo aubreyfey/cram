@@ -292,8 +292,9 @@ just "more of the same". The check lives in `canUseDocuments()` in
   them. Search spans titles, text, places and notebook names. The editor is
   capture-first: the notebook name in the header (tap to move the note) over
   `5:17pm · grand yoho` (tap to open when/where, folded away until then);
-  the photo full-bleed with a `4 / 4` counter and remove/add buttons on the
-  image; the words under it; and a bar pinned to the bottom - record on the
+  the photo full-bleed with a `4 / 4` counter, remove/add buttons on the
+  image and ⤢ in the header to give it the whole screen (the words step
+  aside; ⤡ brings them back); the words under it; and a bar pinned to the bottom - record on the
   left over a "no audio yet" line, a shutter in the middle that goes
   straight to the camera, ✓ on the right to keep it. **Make cards from this** turns
   the words into cards like pasted notes, or the photos into cards like a
